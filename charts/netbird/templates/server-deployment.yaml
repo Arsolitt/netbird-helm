@@ -106,9 +106,6 @@ spec:
                   key: {{ (split "/" $val)._1 }}
           {{- end }}
           {{- end }}
-          {{- with .Values.server.lifecycle }}
-          lifecycle: {{ toYaml . | nindent 12 }}
-          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.server.containerPort }}
@@ -140,11 +137,19 @@ spec:
           {{- if .Values.server.volumeMounts }}
           {{- .Values.server.volumeMounts | toYaml | nindent 12 }}
           {{- end }}
-          {{- if .Values.server.gracefulShutdown }}
+          {{- if or .Values.server.gracefulShutdown .Values.server.lifecycle }}
           lifecycle:
+            {{- if .Values.server.gracefulShutdown }}
             preStop:
               exec:
                 command: ["sh", "-c", "echo Waiting 5 seconds to allow terminating current connections >/proc/1/fd/1; sleep 5"]
+            {{- end }}
+            {{- with .Values.server.lifecycle }}
+            {{- if .postStart }}
+            postStart:
+              {{- toYaml .postStart | nindent 14 }}
+            {{- end }}
+            {{- end }}
           {{- end }}
       {{- with .Values.server.nodeSelector }}
       nodeSelector:
