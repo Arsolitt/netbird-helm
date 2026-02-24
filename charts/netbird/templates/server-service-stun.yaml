@@ -1,0 +1,21 @@
+{{- if and .Values.server.enabled .Values.server.serviceStun.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "netbird.fullname" . }}-server-stun
+  namespace: {{ include "netbird.namespace" . }}
+  labels:
+    {{- include "netbird.server.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.server.serviceStun.type }}
+  {{- if and (eq .Values.server.serviceStun.type "LoadBalancer") .Values.server.serviceStun.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.server.serviceStun.externalTrafficPolicy }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.server.serviceStun.port }}
+      targetPort: stun
+      protocol: UDP
+      name: stun
+  selector:
+    {{- include "netbird.server.selectorLabels" . | nindent 4 }}
+{{- end -}}
