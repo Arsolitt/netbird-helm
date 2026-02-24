@@ -1,10 +1,10 @@
 # netbird
 
-![Version: 1.8.2](https://img.shields.io/badge/Version-1.8.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.60.2](https://img.shields.io/badge/AppVersion-0.60.2-informational?style=flat-square)
+![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.60.2](https://img.shields.io/badge/AppVersion-0.60.2-informational?style=flat-square)
 
 # NetBird Helm Chart
 
-This Helm chart installs and configures the [NetBird](https://github.com/netbirdio/netbird) services within a Kubernetes cluster. The chart includes the management, signal, and relay components of NetBird, providing secure peer-to-peer network connections across various environments.
+This Helm chart installs and configures the [NetBird](https://github.com/netbirdio/netbird) services within a Kubernetes cluster. The chart deploys the unified NetBird server (management, signal, and relay) along with the web dashboard.
 
 ## Prerequisites
 
@@ -36,16 +36,193 @@ helm uninstall netbird
 
 This will remove all the resources associated with the release.
 
+## Architecture
+
+### Version 2.0.0+ (Unified Server)
+
+Starting from version 2.0.0, this chart uses the unified `netbirdio/netbird-server` image that combines management, signal, and relay services into a single component. This simplifies deployment and configuration.
+
+The unified server provides:
+- **Management API** - HTTP endpoints for dashboard and API
+- **Signal Service** - gRPC service for peer coordination
+- **Relay Service** - TURN/STUN relay for NAT traversal
+
+## Migration from 1.x to 2.0.0
+
+Version 2.0.0 introduces breaking changes. Follow this guide to migrate:
+
+### Key Changes
+
+| 1.x Component | 2.x Equivalent |
+|---------------|----------------|
+| `management.*` | `server.*` |
+| `signal.*` | `server.*` (integrated) |
+| `relay.*` | `server.*` (integrated) |
+
+### Configuration Mapping
+
+**Old (1.x):**
+```yaml
+management:
+  enabled: true
+  env:
+    NB_AUTH_SECRET: "secret"
+signal:
+  enabled: true
+relay:
+  enabled: true
+```
+
+**New (2.x):**
+```yaml
+server:
+  enabled: true
+  config:
+    authSecret: "${NB_AUTH_SECRET}"
+  initContainer:
+    envFromSecret:
+      NB_AUTH_SECRET: my-secret/auth-secret
+```
+
+### Removed Values
+
+The following component-specific sections are removed:
+- `management.*`
+- `signal.*`
+- `relay.*`
+
+Replace with `server.*` configuration.
+
+### Service Changes
+
+| Old Service | New Service |
+|-------------|-------------|
+| `management` HTTP | `server` HTTP (port 80) |
+| `management-grpc` | `server` gRPC (via same HTTP port) |
+| `signal` | `server` gRPC (via same HTTP port) |
+| `relay` | `server` relay (via same HTTP port) |
+| - | `server-stun` (port 3478, new) |
+
 ## Configuration
 
-The following table lists the configurable parameters of the NetBird Helm chart and their default values.
+### Basic Example
+
+```yaml
+server:
+  enabled: true
+  config:
+    exposedAddress: "https://netbird.example.com:443"
+    auth:
+      issuer: "https://your-idp.com"
+    store:
+      engine: "sqlite"
+
+dashboard:
+  enabled: true
+  ingress:
+    enabled: true
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+```
+
+### Secrets with envsubst Pattern
+
+The unified server uses an envsubst pattern for secrets. Configuration values can reference environment variables using `${VAR}` syntax:
+
+```yaml
+server:
+  config:
+    authSecret: "${NB_AUTH_SECRET}"
+    store:
+      encryptionKey: "${NB_ENCRYPTION_KEY}"
+      dsn: "${NB_STORE_DSN}"
+
+  initContainer:
+    envFromSecret:
+      NB_AUTH_SECRET: netbird-secrets/auth-secret
+      NB_ENCRYPTION_KEY: netbird-secrets/encryption-key
+      NB_STORE_DSN: netbird-secrets/store-dsn
+```
+
+The init container performs variable substitution before the main server starts.
+
+### PostgreSQL/Mysql Database
+
+For production deployments, use PostgreSQL or MySQL instead of SQLite:
+
+```yaml
+server:
+  config:
+    store:
+      engine: "postgres"
+      dsn: "${NB_STORE_DSN}"
+  initContainer:
+    envFromSecret:
+      NB_STORE_DSN: netbird-secrets/store-dsn
+```
+
+### Ingress Configuration
+
+The chart supports split ingress for HTTP and gRPC traffic:
+
+#### HTTP Ingress (API, Dashboard, Relay)
+
+```yaml
+server:
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /relay
+            pathType: ImplementationSpecific
+          - path: /ws-proxy/
+            pathType: ImplementationSpecific
+          - path: /api
+            pathType: ImplementationSpecific
+          - path: /oauth2
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: netbird-tls
+        hosts:
+          - netbird.example.com
+```
+
+#### gRPC Ingress (Signal, Management gRPC)
+
+```yaml
+server:
+  ingressGrpc:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /signalexchange.SignalExchange/
+            pathType: ImplementationSpecific
+          - path: /management.ManagementService/
+            pathType: ImplementationSpecific
+          - path: /management.ProxyService/
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: netbird-tls
+        hosts:
+          - netbird.example.com
+```
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| dashboard.volumeMounts | list | `[]` |  |
-| dashboard.volumes | list | `[]` |  |
 | dashboard.affinity | object | `{}` |  |
 | dashboard.containerPort | int | `80` |  |
 | dashboard.enabled | bool | `true` |  |
@@ -56,7 +233,6 @@ The following table lists the configurable parameters of the NetBird Helm chart 
 | dashboard.image.repository | string | `"netbirdio/dashboard"` |  |
 | dashboard.image.tag | string | `"v2.22.2"` |  |
 | dashboard.imagePullSecrets | list | `[]` |  |
-| dashboard.initContainers | list | `[]` | |
 | dashboard.ingress.annotations | object | `{}` |  |
 | dashboard.ingress.className | string | `""` |  |
 | dashboard.ingress.enabled | bool | `false` |  |
@@ -64,6 +240,7 @@ The following table lists the configurable parameters of the NetBird Helm chart 
 | dashboard.ingress.hosts[0].paths[0].path | string | `"/"` |  |
 | dashboard.ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
 | dashboard.ingress.tls | list | `[]` |  |
+| dashboard.initContainers | list | `[]` |  |
 | dashboard.lifecycle | object | `{}` |  |
 | dashboard.livenessProbe.httpGet.path | string | `"/"` |  |
 | dashboard.livenessProbe.httpGet.port | string | `"http"` |  |
@@ -86,84 +263,11 @@ The following table lists the configurable parameters of the NetBird Helm chart 
 | dashboard.serviceAccount.create | bool | `true` |  |
 | dashboard.serviceAccount.name | string | `""` |  |
 | dashboard.tolerations | list | `[]` |  |
+| dashboard.volumeMounts | list | `[]` |  |
+| dashboard.volumes | list | `[]` |  |
 | extraManifests | object | `{}` |  |
 | fullnameOverride | string | `""` |  |
 | global.namespace | string | `""` |  |
-| management.volumeMounts | list | `[]` |  |
-| management.volumes | list | `[]` |  |
-| management.affinity | object | `{}` |  |
-| management.configmap | string | `""` |  |
-| management.containerPort | int | `80` |  |
-| management.deploymentAnnotations | object | `{}` |  |
-| management.enabled | bool | `true` |  |
-| management.env | object | `{}` |  |
-| management.envFromSecret | object | `{}` |  |
-| management.envRaw | list | `[]` |  |
-| management.gracefulShutdown |bool | `true` |  |
-| management.grpcContainerPort | int | `33073` |  |
-| management.image.pullPolicy | string | `"IfNotPresent"` |  |
-| management.image.repository | string | `"netbirdio/management"` |  |
-| management.image.tag | string | `""` |  |
-| management.imagePullSecrets | list | `[]` |  |
-| management.initContainers | list | `[]` | |
-| management.ingress.annotations | object | `{}` |  |
-| management.ingress.className | string | `""` |  |
-| management.ingress.enabled | bool | `false` |  |
-| management.ingress.hosts[0].host | string | `"example.com"` |  |
-| management.ingress.hosts[0].paths[0].path | string | `"/"` |  |
-| management.ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
-| management.ingress.tls | list | `[]` |  |
-| management.ingressGrpc.annotations | object | `{}` |  |
-| management.ingressGrpc.className | string | `""` |  |
-| management.ingressGrpc.enabled | bool | `false` |  |
-| management.ingressGrpc.hosts[0].host | string | `"example.com"` |  |
-| management.ingressGrpc.hosts[0].paths[0].path | string | `"/"` |  |
-| management.ingressGrpc.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
-| management.ingressGrpc.tls | list | `[]` |  |
-| management.lifecycle | object | `{}` |  |
-| management.livenessProbe.failureThreshold | int | `3` |  |
-| management.livenessProbe.initialDelaySeconds | int | `15` |  |
-| management.livenessProbe.periodSeconds | int | `10` |  |
-| management.livenessProbe.tcpSocket.port | string | `"http"` |  |
-| management.livenessProbe.timeoutSeconds | int | `3` |  |
-| management.metrics.enabled | bool | `false` |  |
-| management.metrics.port | int | `9090` |  |
-| management.nodeSelector | object | `{}` |  |
-| management.persistentVolume.accessModes[0] | string | `"ReadWriteOnce"` |  |
-| management.persistentVolume.enabled | bool | `true` |  |
-| management.persistentVolume.existingPVName | string | `""` |  |
-| management.persistentVolume.size | string | `"10Mi"` |  |
-| management.persistentVolume.storageClass | string | `nil` |  |
-| management.podAnnotations | object | `{}` |  |
-| management.podCommand.args[0] | string | `"--port=80"` |  |
-| management.podCommand.args[1] | string | `"--log-file=console"` |  |
-| management.podCommand.args[2] | string | `"--log-level=info"` |  |
-| management.podCommand.args[3] | string | `"--disable-anonymous-metrics=false"` |  |
-| management.podCommand.args[4] | string | `"--single-account-mode-domain=netbird.selfhosted"` |  |
-| management.podCommand.args[5] | string | `"--dns-domain=netbird.selfhosted"` |  |
-| management.podSecurityContext | object | `{}` |  |
-| management.readinessProbe.failureThreshold | int | `3` |  |
-| management.readinessProbe.initialDelaySeconds | int | `15` |  |
-| management.readinessProbe.periodSeconds | int | `10` |  |
-| management.readinessProbe.tcpSocket.port | string | `"http"` |  |
-| management.readinessProbe.timeoutSeconds | int | `3` |  |
-| management.replicaCount | int | `1` |  |
-| management.resources | object | `{}` |  |
-| management.securityContext | object | `{}` |  |
-| management.service.name | string | `"http"` |  |
-| management.service.port | int | `80` |  |
-| management.service.type | string | `"ClusterIP"` |  |
-| management.serviceAccount.annotations | object | `{}` |  |
-| management.serviceAccount.create | bool | `true` |  |
-| management.serviceAccount.name | string | `""` |  |
-| management.serviceGrpc.name | string | `"grpc"` |  |
-| management.serviceGrpc.port | int | `33073` |  |
-| management.serviceGrpc.type | string | `"ClusterIP"` |  |
-| management.strategy.type | string | `"RollingUpdate"` |  |
-| management.strategy.rollingUpdate.maxSurge | string | `"25%"` |  |
-| management.strategy.rollingUpdate.maxUnavailable | string | `"25%"` |  |
-| management.tolerations | list | `[]` |  |
-| management.useBackwardsGrpcService | bool | `false` |  |
 | metrics.serviceMonitor.annotations | object | `{}` |  |
 | metrics.serviceMonitor.enabled | bool | `false` |  |
 | metrics.serviceMonitor.honorLabels | bool | `false` |  |
@@ -176,91 +280,120 @@ The following table lists the configurable parameters of the NetBird Helm chart 
 | metrics.serviceMonitor.scrapeTimeout | string | `""` |  |
 | metrics.serviceMonitor.selector | object | `{}` |  |
 | nameOverride | string | `""` |  |
-| relay.volumeMounts | list | `[]` |  |
-| relay.volumes | list | `[]` |  |
-| relay.affinity | object | `{}` |  |
-| relay.containerPort | int | `33080` |  |
-| relay.deploymentAnnotations | object | `{}` |  |
-| relay.enabled | bool | `true` |  |
-| relay.env | object | `{}` |  |
-| relay.envFromSecret | object | `{}` |  |
-| relay.envRaw | list | `[]` |  |
-| relay.gracefulShutdown |bool | `true` |  |
-| relay.image.pullPolicy | string | `"IfNotPresent"` |  |
-| relay.image.repository | string | `"netbirdio/relay"` |  |
-| relay.image.tag | string | `""` |  |
-| relay.imagePullSecrets | list | `[]` |  |
-| relay.initContainers | list | `[]` | |
-| relay.ingress.annotations | object | `{}` |  |
-| relay.ingress.className | string | `""` |  |
-| relay.ingress.enabled | bool | `false` |  |
-| relay.ingress.hosts[0].host | string | `"example.com"` |  |
-| relay.ingress.hosts[0].paths[0].path | string | `"/relay"` |  |
-| relay.ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
-| relay.ingress.tls | list | `[]` |  |
-| relay.livenessProbe.initialDelaySeconds | int | `5` |  |
-| relay.livenessProbe.periodSeconds | int | `5` |  |
-| relay.livenessProbe.tcpSocket.port | string | `"http"` |  |
-| relay.logLevel | string | `"info"` |  |
-| relay.metrics.enabled | bool | `false` |  |
-| relay.metrics.port | int | `9090` |  |
-| relay.nodeSelector | object | `{}` |  |
-| relay.podAnnotations | object | `{}` |  |
-| relay.podSecurityContext | object | `{}` |  |
-| relay.readinessProbe.initialDelaySeconds | int | `5` |  |
-| relay.readinessProbe.periodSeconds | int | `5` |  |
-| relay.readinessProbe.tcpSocket.port | string | `"http"` |  |
-| relay.replicaCount | int | `1` |  |
-| relay.resources | object | `{}` |  |
-| relay.securityContext | object | `{}` |  |
-| relay.service.name | string | `"http"` |  |
-| relay.service.port | int | `33080` |  |
-| relay.service.type | string | `"ClusterIP"` |  |
-| relay.serviceAccount.annotations | object | `{}` |  |
-| relay.serviceAccount.create | bool | `true` |  |
-| relay.serviceAccount.name | string | `""` |  |
-| relay.tolerations | list | `[]` |  |
-| signal.volumeMounts | list | `[]` |  |
-| signal.volumes | list | `[]` |  |
-| signal.affinity | object | `{}` |  |
-| signal.containerPort | int | `80` |  |
-| signal.deploymentAnnotations | object | `{}` |  |
-| signal.enabled | bool | `true` |  |
-| signal.gracefulShutdown |bool | `true` |  |
-| signal.image.pullPolicy | string | `"IfNotPresent"` |  |
-| signal.image.repository | string | `"netbirdio/signal"` |  |
-| signal.image.tag | string | `""` |  |
-| signal.imagePullSecrets | list | `[]` |  |
-| signal.initContainers | list | `[]` | |
-| signal.ingress.annotations | object | `{}` |  |
-| signal.ingress.className | string | `""` |  |
-| signal.ingress.enabled | bool | `false` |  |
-| signal.ingress.hosts[0].host | string | `"example.com"` |  |
-| signal.ingress.hosts[0].paths[0].path | string | `"/signalexchange.SignalExchange"` |  |
-| signal.ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
-| signal.ingress.tls | list | `[]` |  |
-| signal.livenessProbe.initialDelaySeconds | int | `5` |  |
-| signal.livenessProbe.periodSeconds | int | `5` |  |
-| signal.livenessProbe.tcpSocket.port | string | `"grpc"` |  |
-| signal.logLevel | string | `"info"` |  |
-| signal.metrics.enabled | bool | `false` |  |
-| signal.metrics.port | int | `9090` |  |
-| signal.nodeSelector | object | `{}` |  |
-| signal.podAnnotations | object | `{}` |  |
-| signal.podSecurityContext | object | `{}` |  |
-| signal.readinessProbe.initialDelaySeconds | int | `5` |  |
-| signal.readinessProbe.periodSeconds | int | `5` |  |
-| signal.readinessProbe.tcpSocket.port | string | `"grpc"` |  |
-| signal.replicaCount | int | `1` |  |
-| signal.resources | object | `{}` |  |
-| signal.securityContext | object | `{}` |  |
-| signal.service.name | string | `"grpc"` |  |
-| signal.service.port | int | `80` |  |
-| signal.service.type | string | `"ClusterIP"` |  |
-| signal.serviceAccount.annotations | object | `{}` |  |
-| signal.serviceAccount.create | bool | `true` |  |
-| signal.serviceAccount.name | string | `""` |  |
-| signal.tolerations | list | `[]` |  |
+| server.affinity | object | `{}` |  |
+| server.config.auth.cliRedirectURIs | list | `["http://localhost:53000/"]` |  |
+| server.config.auth.dashboardRedirectURIs | list | `[]` |  |
+| server.config.auth.issuer | string | `""` |  |
+| server.config.auth.localAuthDisabled | bool | `false` |  |
+| server.config.auth.signKeyRefreshEnabled | bool | `false` |  |
+| server.config.authSecret | string | `"${NB_AUTH_SECRET}"` | Shared secret for relay authentication. Use ${VAR} for envsubst. |
+| server.config.dataDir | string | `"/var/lib/netbird/"` |  |
+| server.config.disableAnonymousMetrics | bool | `false` |  |
+| server.config.disableGeoliteUpdate | bool | `false` |  |
+| server.config.exposedAddress | string | `""` | Public address peers use to connect. |
+| server.config.healthcheckAddress | string | `":9000"` |  |
+| server.config.listenAddress | string | `":80"` |  |
+| server.config.logFile | string | `"console"` |  |
+| server.config.logLevel | string | `"info"` |  |
+| server.config.metricsPort | int | `9090` |  |
+| server.config.store.dsn | string | `""` | Connection string for postgres/mysql. Use ${VAR} for envsubst. |
+| server.config.store.encryptionKey | string | `"${NB_ENCRYPTION_KEY}"` | Encryption key. Use ${VAR} for envsubst. |
+| server.config.store.engine | string | `"sqlite"` | Store engine: sqlite, postgres, or mysql. |
+| server.config.stunPorts | list | `[]` |  |
+| server.config.tls.awsRoute53 | bool | `false` |  |
+| server.config.tls.certFile | string | `""` |  |
+| server.config.tls.enabled | bool | `false` |  |
+| server.config.tls.keyFile | string | `""` |  |
+| server.config.tls.letsencrypt.dataDir | string | `""` |  |
+| server.config.tls.letsencrypt.domains | list | `[]` |  |
+| server.config.tls.letsencrypt.email | string | `""` |  |
+| server.config.tls.letsencrypt.enabled | bool | `false` |  |
+| server.containerPort | int | `80` |  |
+| server.deploymentAnnotations | object | `{}` |  |
+| server.enabled | bool | `true` |  |
+| server.env | object | `{}` |  |
+| server.envFromSecret | object | `{}` |  |
+| server.envRaw | list | `[]` |  |
+| server.gracefulShutdown | bool | `true` |  |
+| server.image.pullPolicy | string | `"IfNotPresent"` |  |
+| server.image.repository | string | `"netbirdio/netbird-server"` |  |
+| server.image.tag | string | `""` |  |
+| server.imagePullSecrets | list | `[]` |  |
+| server.initContainer.enabled | bool | `true` |  |
+| server.initContainer.env | object | `{}` |  |
+| server.initContainer.envFromSecret | object | `{}` | Environment variables from secrets for envsubst. Format: ENV_VAR: secretName/secretKey |
+| server.initContainer.envRaw | list | `[]` |  |
+| server.initContainer.image.pullPolicy | string | `"IfNotPresent"` |  |
+| server.initContainer.image.repository | string | `"alpine"` |  |
+| server.initContainer.image.tag | string | `"3.19"` |  |
+| server.ingress.annotations | object | `{}` |  |
+| server.ingress.className | string | `""` |  |
+| server.ingress.enabled | bool | `false` |  |
+| server.ingress.hosts[0].host | string | `"netbird.example.com"` |  |
+| server.ingress.hosts[0].paths[0].path | string | `"/relay"` |  |
+| server.ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
+| server.ingress.hosts[0].paths[1].path | string | `"/ws-proxy/"` |  |
+| server.ingress.hosts[0].paths[1].pathType | string | `"ImplementationSpecific"` |  |
+| server.ingress.hosts[0].paths[2].path | string | `"/api"` |  |
+| server.ingress.hosts[0].paths[2].pathType | string | `"ImplementationSpecific"` |  |
+| server.ingress.hosts[0].paths[3].path | string | `"/oauth2"` |  |
+| server.ingress.hosts[0].paths[3].pathType | string | `"ImplementationSpecific"` |  |
+| server.ingress.tls | list | `[]` |  |
+| server.ingressGrpc.annotations | object | `{}` |  |
+| server.ingressGrpc.className | string | `""` |  |
+| server.ingressGrpc.enabled | bool | `false` |  |
+| server.ingressGrpc.hosts[0].host | string | `"netbird.example.com"` |  |
+| server.ingressGrpc.hosts[0].paths[0].path | string | `"/signalexchange.SignalExchange/"` |  |
+| server.ingressGrpc.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
+| server.ingressGrpc.hosts[0].paths[1].path | string | `"/management.ManagementService/"` |  |
+| server.ingressGrpc.hosts[0].paths[1].pathType | string | `"ImplementationSpecific"` |  |
+| server.ingressGrpc.hosts[0].paths[2].path | string | `"/management.ProxyService/"` |  |
+| server.ingressGrpc.hosts[0].paths[2].pathType | string | `"ImplementationSpecific"` |  |
+| server.ingressGrpc.tls | list | `[]` |  |
+| server.lifecycle | object | `{}` |  |
+| server.livenessProbe.failureThreshold | int | `3` |  |
+| server.livenessProbe.httpGet.path | string | `"/health"` |  |
+| server.livenessProbe.httpGet.port | int | `9000` |  |
+| server.livenessProbe.initialDelaySeconds | int | `15` |  |
+| server.livenessProbe.periodSeconds | int | `10` |  |
+| server.livenessProbe.timeoutSeconds | int | `3` |  |
+| server.metrics.enabled | bool | `false` |  |
+| server.metrics.port | int | `9090` |  |
+| server.nodeSelector | object | `{}` |  |
+| server.persistentVolume.accessModes | list | `["ReadWriteOnce"]` |  |
+| server.persistentVolume.annotations | object | `{}` |  |
+| server.persistentVolume.enabled | bool | `true` |  |
+| server.persistentVolume.existingPVName | string | `""` |  |
+| server.persistentVolume.size | string | `"10Mi"` |  |
+| server.persistentVolume.storageClass | string | `nil` |  |
+| server.podAnnotations | object | `{}` |  |
+| server.podSecurityContext | object | `{}` |  |
+| server.readinessProbe.failureThreshold | int | `3` |  |
+| server.readinessProbe.httpGet.path | string | `"/health"` |  |
+| server.readinessProbe.httpGet.port | int | `9000` |  |
+| server.readinessProbe.initialDelaySeconds | int | `15` |  |
+| server.readinessProbe.periodSeconds | int | `10` |  |
+| server.readinessProbe.timeoutSeconds | int | `3` |  |
+| server.replicaCount | int | `1` |  |
+| server.resources | object | `{}` |  |
+| server.securityContext | object | `{}` |  |
+| server.service.externalTrafficPolicy | string | `""` |  |
+| server.service.name | string | `"http"` |  |
+| server.service.port | int | `80` |  |
+| server.service.type | string | `"ClusterIP"` |  |
+| server.serviceAccount.annotations | object | `{}` |  |
+| server.serviceAccount.create | bool | `true` |  |
+| server.serviceAccount.name | string | `""` |  |
+| server.serviceStun.enabled | bool | `true` |  |
+| server.serviceStun.externalTrafficPolicy | string | `""` |  |
+| server.serviceStun.port | int | `3478` |  |
+| server.serviceStun.type | string | `"ClusterIP"` |  |
+| server.strategy.rollingUpdate.maxSurge | string | `"25%"` |  |
+| server.strategy.rollingUpdate.maxUnavailable | string | `"25%"` |  |
+| server.strategy.type | string | `"RollingUpdate"` |  |
+| server.tolerations | list | `[]` |  |
+| server.volumeMounts | list | `[]` |  |
+| server.volumes | list | `[]` |  |
 
 For more configuration options, refer to the `values.yaml` file.
 
