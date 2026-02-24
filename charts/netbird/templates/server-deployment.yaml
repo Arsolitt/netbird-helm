@@ -1,0 +1,177 @@
+{{- if .Values.server.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "netbird.fullname" . }}-server
+  namespace: {{ include "netbird.namespace" . }}
+  {{- with .Values.server.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "netbird.server.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.server.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "netbird.server.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: {{ .Values.server.strategy.type }}
+    {{- if eq .Values.server.strategy.type "RollingUpdate" }}
+    rollingUpdate:
+      {{- if .Values.server.strategy.rollingUpdate }}
+      maxSurge: {{ .Values.server.strategy.rollingUpdate.maxSurge | default "25%" }}
+      maxUnavailable: {{ .Values.server.strategy.rollingUpdate.maxUnavailable | default "25%" }}
+      {{- end }}
+    {{- end }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print .Template.BasePath "/server-cm.yaml") . | sha256sum }}
+        {{- with .Values.server.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "netbird.server.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.server.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "netbird.server.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.server.podSecurityContext | nindent 8 }}
+      {{- if .Values.server.initContainer.enabled }}
+      initContainers:
+        - name: config-processor
+          image: "{{ .Values.server.initContainer.image.repository }}:{{ .Values.server.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.server.initContainer.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              apk add --no-cache gettext
+              envsubst < /etc/netbird/config.yaml.tmpl > /etc/netbird/config.yaml
+          {{- if or (.Values.server.initContainer.env) (.Values.server.initContainer.envRaw) (.Values.server.initContainer.envFromSecret) }}
+          env:
+          {{- range $key, $val := .Values.server.initContainer.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+          {{- end }}
+          {{- if .Values.server.initContainer.envRaw }}
+            {{- with .Values.server.initContainer.envRaw }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- range $key, $val := .Values.server.initContainer.envFromSecret }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ (split "/" $val)._0 }}
+                  key: {{ (split "/" $val)._1 }}
+          {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: config-template
+              mountPath: /etc/netbird
+              readOnly: true
+            - name: config-rendered
+              mountPath: /etc/netbird
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-server
+          securityContext:
+            {{- toYaml .Values.server.securityContext | nindent 12 }}
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          command: ["netbird-server"]
+          args:
+            - --config
+            - /etc/netbird/config.yaml
+          {{- if or (.Values.server.env) (.Values.server.envRaw) (.Values.server.envFromSecret) }}
+          env:
+          {{- range $key, $val := .Values.server.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+          {{- end }}
+          {{- if .Values.server.envRaw }}
+            {{- with .Values.server.envRaw }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- range $key, $val := .Values.server.envFromSecret }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ (split "/" $val)._0 }}
+                  key: {{ (split "/" $val)._1 }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.server.lifecycle }}
+          lifecycle: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.containerPort }}
+              protocol: TCP
+            - name: stun
+              containerPort: {{ .Values.server.serviceStun.port }}
+              protocol: UDP
+            {{- if .Values.server.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.server.metrics.port }}
+              protocol: TCP
+            {{- end }}
+          {{- if .Values.server.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.server.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.server.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.server.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+          volumeMounts:
+            - name: config-rendered
+              mountPath: /etc/netbird
+              readOnly: true
+            - name: server-data
+              mountPath: /var/lib/netbird
+          {{- if .Values.server.volumeMounts }}
+          {{- .Values.server.volumeMounts | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.server.gracefulShutdown }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "echo Waiting 5 seconds to allow terminating current connections >/proc/1/fd/1; sleep 5"]
+          {{- end }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config-template
+          configMap:
+            name: {{ include "netbird.fullname" . }}-server
+        - name: config-rendered
+          emptyDir: {}
+        - name: server-data
+          {{- if .Values.server.persistentVolume.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "netbird.fullname" . }}-server
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.server.volumes }}
+        {{- .Values.server.volumes | toYaml | nindent 8 }}
+        {{- end }}
+{{- end -}}
