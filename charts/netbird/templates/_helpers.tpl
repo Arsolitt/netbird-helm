@@ -41,13 +41,20 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
+{{/*
+Server selector labels
+*/}}
+{{- define "netbird.server.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "netbird.name" . }}-server
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
 
 {{/*
-Common management labels
+Common server labels
 */}}
-{{- define "netbird.management.labels" -}}
+{{- define "netbird.server.labels" -}}
 helm.sh/chart: {{ include "netbird.chart" . }}
-{{ include "netbird.management.selectorLabels" . }}
+{{ include "netbird.server.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -55,27 +62,14 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Common signal labels
+Create the name of the server service account to use
 */}}
-{{- define "netbird.signal.labels" -}}
-helm.sh/chart: {{ include "netbird.chart" . }}
-{{ include "netbird.signal.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- define "netbird.server.serviceAccountName" -}}
+{{- if .Values.server.serviceAccount.create }}
+{{- default (printf "%s-server" (include "netbird.fullname" .)) .Values.server.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.server.serviceAccount.name }}
 {{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-Common relay labels
-*/}}
-{{- define "netbird.relay.labels" -}}
-helm.sh/chart: {{ include "netbird.chart" . }}
-{{ include "netbird.relay.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
@@ -88,69 +82,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Management selector labels
-*/}}
-{{- define "netbird.management.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "netbird.name" . }}-management
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Signal selector labels
-*/}}
-{{- define "netbird.signal.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "netbird.name" . }}-signal
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Relay selector labels
-*/}}
-{{- define "netbird.relay.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "netbird.name" . }}-relay
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
 Dashboard selector labels
 */}}
 {{- define "netbird.dashboard.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "netbird.name" . }}-dashboard
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-
-{{/*
-Create the name of the management service account to use
-*/}}
-{{- define "netbird.management.serviceAccountName" -}}
-{{- if .Values.management.serviceAccount.create }}
-{{- default (printf "%s-management" (include "netbird.fullname" .)) .Values.management.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.management.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Create the name of the signal service account to use
-*/}}
-{{- define "netbird.signal.serviceAccountName" -}}
-{{- if .Values.signal.serviceAccount.create }}
-{{- default (printf "%s-signal" (include "netbird.fullname" .)) .Values.signal.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.signal.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Create the name of the relay service account to use
-*/}}
-{{- define "netbird.relay.serviceAccountName" -}}
-{{- if .Values.relay.serviceAccount.create }}
-{{- default (printf "%s-relay" (include "netbird.fullname" .)) .Values.relay.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.relay.serviceAccount.name }}
-{{- end }}
 {{- end }}
 
 {{/*
@@ -170,4 +106,3 @@ Allow the release namespace to be overridden
 {{- define "netbird.namespace" -}}
 {{- default .Release.Namespace .Values.global.namespace -}}
 {{- end -}}
-
