@@ -300,7 +300,7 @@ server:
 | server.config.store.encryptionKey | string | `"${NB_ENCRYPTION_KEY}"` | Encryption key. Use ${VAR} for envsubst. |
 | server.config.store.engine | string | `"sqlite"` | Store engine: sqlite, postgres, or mysql. |
 | server.config.stunPorts | list | `[]` |  |
-| server.config.tls.awsRoute53 | bool | `false` |  |
+| server.config.tls.letsencrypt.awsRoute53 | bool | `false` | Use AWS Route53 for DNS validation |
 | server.config.tls.certFile | string | `""` |  |
 | server.config.tls.enabled | bool | `false` |  |
 | server.config.tls.keyFile | string | `""` |  |
