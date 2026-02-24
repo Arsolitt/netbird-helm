@@ -1,0 +1,27 @@
+{{- if .Values.server.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "netbird.fullname" . }}-server
+  namespace: {{ include "netbird.namespace" . }}
+  labels:
+    {{- include "netbird.server.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.server.service.type }}
+  {{- if and (eq .Values.server.service.type "LoadBalancer") .Values.server.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.server.service.externalTrafficPolicy }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.server.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: {{ .Values.server.service.name }}
+    {{- if .Values.server.metrics.enabled }}
+    - port: {{ .Values.server.metrics.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
+  selector:
+    {{- include "netbird.server.selectorLabels" . | nindent 4 }}
+{{- end -}}
