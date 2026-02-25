@@ -33,33 +33,33 @@ data:
       {{- end }}
       authSecret: {{ .Values.server.config.authSecret | quote }}
       dataDir: {{ .Values.server.config.dataDir | quote }}
-    disableAnonymousMetrics: {{ .Values.server.config.disableAnonymousMetrics }}
-    disableGeoliteUpdate: {{ .Values.server.config.disableGeoliteUpdate }}
-    auth:
-      issuer: {{ .Values.server.config.auth.issuer | quote }}
-      localAuthDisabled: {{ .Values.server.config.auth.localAuthDisabled }}
-      signKeyRefreshEnabled: {{ .Values.server.config.auth.signKeyRefreshEnabled }}
-      {{- if .Values.server.config.auth.dashboardRedirectURIs }}
-      dashboardRedirectURIs:
-        {{- toYaml .Values.server.config.auth.dashboardRedirectURIs | nindent 8 }}
+      disableAnonymousMetrics: {{ .Values.server.config.disableAnonymousMetrics }}
+      disableGeoliteUpdate: {{ .Values.server.config.disableGeoliteUpdate }}
+      auth:
+        issuer: {{ .Values.server.config.auth.issuer | quote }}
+        localAuthDisabled: {{ .Values.server.config.auth.localAuthDisabled }}
+        signKeyRefreshEnabled: {{ .Values.server.config.auth.signKeyRefreshEnabled }}
+        {{- if .Values.server.config.auth.dashboardRedirectURIs }}
+        dashboardRedirectURIs:
+          {{- toYaml .Values.server.config.auth.dashboardRedirectURIs | nindent 8 }}
+        {{- end }}
+        cliRedirectURIs:
+          {{- toYaml .Values.server.config.auth.cliRedirectURIs | nindent 8 }}
+        {{- if .Values.server.config.auth.owner }}
+        owner:
+          email: {{ .Values.server.config.auth.owner.email | quote }}
+          password: {{ .Values.server.config.auth.owner.password | quote }}
+        {{- end }}
+      store:
+        engine: {{ .Values.server.config.store.engine | quote }}
+        dsn: {{ .Values.server.config.store.dsn | quote }}
+        encryptionKey: {{ .Values.server.config.store.encryptionKey | quote }}
+      {{- if .Values.server.config.reverseProxy }}
+      reverseProxy:
+        trustedHTTPProxies:
+          {{- toYaml .Values.server.config.reverseProxy.trustedHTTPProxies | nindent 8 }}
+        trustedHTTPProxiesCount: {{ .Values.server.config.reverseProxy.trustedHTTPProxiesCount }}
+        trustedPeers:
+          {{- toYaml .Values.server.config.reverseProxy.trustedPeers | nindent 8 }}
       {{- end }}
-      cliRedirectURIs:
-        {{- toYaml .Values.server.config.auth.cliRedirectURIs | nindent 8 }}
-      {{- if .Values.server.config.auth.owner }}
-      owner:
-        email: {{ .Values.server.config.auth.owner.email | quote }}
-        password: {{ .Values.server.config.auth.owner.password | quote }}
-      {{- end }}
-    store:
-      engine: {{ .Values.server.config.store.engine | quote }}
-      dsn: {{ .Values.server.config.store.dsn | quote }}
-      encryptionKey: {{ .Values.server.config.store.encryptionKey | quote }}
-    {{- if .Values.server.config.reverseProxy }}
-    reverseProxy:
-      trustedHTTPProxies:
-        {{- toYaml .Values.server.config.reverseProxy.trustedHTTPProxies | nindent 8 }}
-      trustedHTTPProxiesCount: {{ .Values.server.config.reverseProxy.trustedHTTPProxiesCount }}
-      trustedPeers:
-        {{- toYaml .Values.server.config.reverseProxy.trustedPeers | nindent 8 }}
-    {{- end }}
 {{- end -}}

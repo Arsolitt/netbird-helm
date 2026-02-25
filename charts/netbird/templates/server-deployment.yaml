@@ -49,8 +49,7 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              apk add --no-cache gettext
-              envsubst < /etc/netbird/config.yaml.tmpl > /etc/netbird/config.yaml
+              envsubst < /etc/netbird-template/config.yaml.tmpl > /etc/netbird/config.yaml
           {{- if or (.Values.server.initContainer.env) (.Values.server.initContainer.envRaw) (.Values.server.initContainer.envFromSecret) }}
           env:
           {{- range $key, $val := .Values.server.initContainer.env }}
@@ -72,7 +71,7 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config-template
-              mountPath: /etc/netbird
+              mountPath: /etc/netbird-template
               readOnly: true
             - name: config-rendered
               mountPath: /etc/netbird
@@ -83,7 +82,7 @@ spec:
             {{- toYaml .Values.server.securityContext | nindent 12 }}
           image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
-          command: ["netbird-server"]
+          command: ["/go/bin/netbird-server"]
           args:
             - --config
             - /etc/netbird/config.yaml
