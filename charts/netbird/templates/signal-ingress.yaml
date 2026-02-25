@@ -1,0 +1,36 @@
+{{- if and .Values.signal.enabled .Values.signal.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "netbird.fullname" . }}-signal
+  namespace: {{ include "netbird.namespace" . }}
+  labels:
+    {{- include "netbird.signal.labels" . | nindent 4 }}
+  {{- with .Values.signal.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.signal.ingress.className }}
+  ingressClassName: {{ .Values.signal.ingress.className | quote }}
+  {{- end }}
+  {{- if .Values.signal.ingress.tls }}
+  tls:
+    {{- toYaml .Values.signal.ingress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.signal.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "netbird.fullname" $ }}-signal
+                port:
+                  number: {{ $.Values.signal.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end -}}

@@ -1,0 +1,116 @@
+{{- if .Values.signal.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "netbird.fullname" . }}-signal
+  namespace: {{ include "netbird.namespace" . }}
+  {{- with .Values.signal.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "netbird.signal.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.signal.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "netbird.signal.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.signal.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "netbird.signal.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.signal.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "netbird.signal.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.signal.podSecurityContext | nindent 8 }}
+      {{- with .Values.signal.initContainers }}
+      initContainers:
+        {{- tpl (toYaml .) $ | nindent 6 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-signal
+          securityContext:
+            {{- toYaml .Values.signal.securityContext | nindent 12 }}
+          image: "{{ .Values.signal.image.repository }}:{{ .Values.signal.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.signal.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.signal.containerPort }}
+              protocol: TCP
+            {{- if .Values.signal.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.signal.metrics.port }}
+              protocol: TCP
+            {{- end }}
+          {{- if .Values.signal.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.signal.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.signal.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.signal.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.signal.resources | nindent 12 }}
+          {{- if .Values.signal.volumeMounts }}
+          volumeMounts:
+          {{- .Values.signal.volumeMounts | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if or .Values.signal.gracefulShutdown .Values.signal.lifecycle }}
+          lifecycle:
+            {{- if .Values.signal.gracefulShutdown }}
+            preStop:
+              exec:
+                command: ["sh", "-c", "echo Waiting 5 seconds to allow terminating current connections >/proc/1/fd/1; sleep 5"]
+            {{- end }}
+            {{- with .Values.signal.lifecycle }}
+            {{- if .postStart }}
+            postStart:
+              {{- toYaml .postStart | nindent 14 }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if or (.Values.signal.env) (.Values.signal.envRaw) (.Values.signal.envFromSecret) }}
+          env:
+          {{- range $key, $val := .Values.signal.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+          {{- end }}
+          {{- if .Values.signal.envRaw }}
+            {{- with .Values.signal.envRaw }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- range $key, $val := .Values.signal.envFromSecret }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ (split "/" $val)._0 }}
+                  key: {{ (split "/" $val)._1 }}
+          {{- end }}
+          {{- end }}
+      {{- if .Values.signal.volumes }}
+      volumes:
+      {{- .Values.signal.volumes | toYaml | nindent 8 }}
+      {{- end }}
+      {{- with .Values.signal.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.signal.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.signal.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end -}}
