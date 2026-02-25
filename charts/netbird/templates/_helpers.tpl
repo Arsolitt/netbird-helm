@@ -106,3 +106,34 @@ Allow the release namespace to be overridden
 {{- define "netbird.namespace" -}}
 {{- default .Release.Namespace .Values.global.namespace -}}
 {{- end -}}
+
+{{/*
+Management selector labels
+*/}}
+{{- define "netbird.management.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "netbird.name" . }}-management
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Management labels
+*/}}
+{{- define "netbird.management.labels" -}}
+helm.sh/chart: {{ include "netbird.chart" . }}
+{{ include "netbird.management.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Create the name of the management service account to use
+*/}}
+{{- define "netbird.management.serviceAccountName" -}}
+{{- if .Values.management.serviceAccount.create }}
+{{- default (printf "%s-management" (include "netbird.fullname" .)) .Values.management.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.management.serviceAccount.name }}
+{{- end }}
+{{- end }}
