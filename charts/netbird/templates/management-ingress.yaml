@@ -1,0 +1,36 @@
+{{- if and .Values.management.enabled .Values.management.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "netbird.fullname" . }}-management
+  namespace: {{ include "netbird.namespace" . }}
+  labels:
+    {{- include "netbird.management.labels" . | nindent 4 }}
+  {{- with .Values.management.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.management.ingress.className }}
+  ingressClassName: {{ .Values.management.ingress.className | quote }}
+  {{- end }}
+  {{- if .Values.management.ingress.tls }}
+  tls:
+    {{- toYaml .Values.management.ingress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.management.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "netbird.fullname" $ }}-management
+                port:
+                  number: {{ $.Values.management.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end -}}

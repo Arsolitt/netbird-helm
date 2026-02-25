@@ -1,0 +1,42 @@
+{{- if and .Values.management.enabled .Values.management.ingressGrpc.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "netbird.fullname" . }}-management-grpc
+  namespace: {{ include "netbird.namespace" . }}
+  labels:
+    {{- include "netbird.management.labels" . | nindent 4 }}
+  {{- with .Values.management.ingressGrpc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.management.ingressGrpc.className }}
+  ingressClassName: {{ .Values.management.ingressGrpc.className | quote }}
+  {{- end }}
+  {{- if .Values.management.ingressGrpc.tls }}
+  tls:
+    {{- toYaml .Values.management.ingressGrpc.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.management.ingressGrpc.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                {{- if $.Values.management.useBackwardsGrpcService }}
+                name: {{ include "netbird.fullname" $ }}-management-grpc
+                port:
+                  number: {{ $.Values.management.serviceGrpc.port }}
+                {{- else }}
+                name: {{ include "netbird.fullname" $ }}-management
+                port:
+                  number: {{ $.Values.management.service.port }}
+                {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end -}}
