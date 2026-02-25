@@ -38,14 +38,63 @@ This will remove all the resources associated with the release.
 
 ## Architecture
 
-### Version 2.0.0+ (Unified Server)
+This chart supports multiple deployment modes:
 
-Starting from version 2.0.0, this chart uses the unified `netbirdio/netbird-server` image that combines management, signal, and relay services into a single component. This simplifies deployment and configuration.
+### Unified Server Mode (Default)
 
-The unified server provides:
+The unified server mode uses `netbirdio/netbird-server` image that combines all services:
+
 - **Management API** - HTTP endpoints for dashboard and API
 - **Signal Service** - gRPC service for peer coordination
 - **Relay Service** - TURN/STUN relay for NAT traversal
+
+### Microservice Mode (New in 2.1.0)
+
+For scenarios requiring independent scaling or component isolation:
+
+| Component | Image | Description |
+|-----------|------|-------------|
+| **Management** | `netbirdio/management` | JSON config with `{{ .VAR }}` placeholders |
+| **Signal** | `netbirdio/signal` | gRPC-only service for peer coordination |
+| **Relay** | `netbirdio/relay` | HTTP relay with optional embedded STUN |
+
+#### Mode Selection
+
+| Mode | Configuration |
+|------|---------------|
+| **Unified** | `server.enabled: true` (default) |
+| **Microservice** | `server.enabled: false`, `management.enabled: true`, `signal.enabled: true`, `relay.enabled: true` |
+| **Hybrid** | `server.enabled: true`, `relay.enabled: true` |
+
+> **Note**: Server and management cannot be enabled simultaneously - the chart will fail validation.
+
+#### Microservice Example
+
+```yaml
+server:
+  enabled: false
+
+management:
+  enabled: true
+  configmap: |-
+    {
+      "Signal": { "URI": "netbird.example.com:443" },
+      "HttpConfig": { "AuthIssuer": "https://auth.example.com/netbird/" }
+    }
+  envFromSecret:
+    DATASTORE_ENCRYPTION_KEY: netbird/encryptionKey
+
+signal:
+  enabled: true
+
+relay:
+  enabled: true
+  stun:
+    enabled: true
+    ports: [3478]
+```
+
+See [examples/microservice/](./examples/microservice/) and [examples/hybrid/](./examples/hybrid/) for complete examples.
 
 ## Migration from 1.x to 2.0.0
 
