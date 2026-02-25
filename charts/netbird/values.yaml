@@ -267,6 +267,176 @@ management:
   ##
   initContainers: []
 
+## @section NetBird Signal (Microservice)
+
+signal:
+  ## @param signal.enabled Enable or disable NetBird signal component.
+  ##
+  enabled: false
+
+  ## @param signal.logLevel Log level for the signal component.
+  ##
+  logLevel: info
+
+  ## @param signal.replicaCount Number of signal pod replicas.
+  ##
+  replicaCount: 1
+
+  image:
+    ## @param signal.image.repository Docker image repository for the signal component.
+    ##
+    repository: netbirdio/signal
+
+    ## @param signal.image.pullPolicy Docker image pull policy.
+    ##
+    pullPolicy: IfNotPresent
+
+    ## @param signal.image.tag Docker image tag.
+    ##
+    tag: ""
+
+  ## @param signal.imagePullSecrets Docker registry credentials for pulling the signal image.
+  ##
+  imagePullSecrets: []
+
+  serviceAccount:
+    ## @param signal.serviceAccount.create Whether to create a service account.
+    ##
+    create: true
+
+    ## @param signal.serviceAccount.annotations Annotations for the service account.
+    ##
+    annotations: {}
+
+    ## @param signal.serviceAccount.name Name of the service account to use.
+    ##
+    name: ""
+
+  ## @param signal.deploymentAnnotations Annotations for the signal deployment.
+  ##
+  deploymentAnnotations: {}
+
+  ## @param signal.podAnnotations Annotations for the signal pod(s).
+  ##
+  podAnnotations: {}
+
+  ## @param signal.podSecurityContext Security context for the signal pod(s).
+  ##
+  podSecurityContext: {}
+
+  ## @param signal.securityContext Security context for the signal container.
+  ##
+  securityContext: {}
+
+  ## @param signal.containerPort Container port for the signal service.
+  ##
+  containerPort: 80
+
+  metrics:
+    ## @param signal.metrics.enabled Enable metrics endpoint.
+    ##
+    enabled: false
+
+    ## @param signal.metrics.port Metrics port.
+    ##
+    port: 9090
+
+  service:
+    ## @param signal.service.type Service type for the signal service.
+    ##
+    type: ClusterIP
+
+    ## @param signal.service.port Port for the signal service.
+    ##
+    port: 80
+
+    ## @param signal.service.name Name for the signal service.
+    ##
+    name: grpc
+
+  ingress:
+    ## @param signal.ingress.enabled Enable or disable ingress for the signal component.
+    ##
+    enabled: false
+
+    ## @param signal.ingress.className Ingress class name.
+    ##
+    className: ""
+
+    ## @param signal.ingress.annotations Annotations for the signal ingress resource.
+    ##
+    annotations: {}
+
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /signalexchange.SignalExchange/
+            pathType: ImplementationSpecific
+
+    ## @param signal.ingress.tls TLS settings for the signal ingress.
+    ##
+    tls: []
+
+  ## @param signal.resources Resource requests and limits for the signal pod.
+  ##
+  resources: {}
+
+  ## @param signal.nodeSelector Node selector for scheduling the signal pod.
+  ##
+  nodeSelector: {}
+
+  ## @param signal.tolerations Tolerations for scheduling the signal pod.
+  ##
+  tolerations: []
+
+  ## @param signal.affinity Affinity rules for scheduling the signal pod.
+  ##
+  affinity: {}
+
+  ## @param signal.livenessProbe Liveness probe for the signal component.
+  ##
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    tcpSocket:
+      port: grpc
+
+  ## @param signal.readinessProbe Readiness probe for the signal component.
+  ##
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    tcpSocket:
+      port: grpc
+
+  ## @param signal.env Environment variables for the signal pod.
+  ##
+  env: {}
+
+  ## @param signal.envRaw Raw environment variables for the signal pod.
+  ##
+  envRaw: []
+
+  ## @param signal.envFromSecret Environment variables from secrets.
+  ##
+  envFromSecret: {}
+
+  ## @param signal.volumeMounts Volume mounts for the signal pod.
+  ##
+  volumeMounts: []
+
+  ## @param signal.volumes Volumes for the signal pod.
+  ##
+  volumes: []
+
+  ## @param signal.gracefulShutdown Add delay before pod shutdown.
+  ##
+  gracefulShutdown: true
+
+  ## @param signal.initContainers Init containers for the signal pod.
+  ##
+  initContainers: []
+
 ## @section NetBird Server (Unified)
 
 server:
