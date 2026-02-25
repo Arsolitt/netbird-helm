@@ -1,5 +1,3 @@
-{{- if and .Values.server.enabled .Values.management -}}
-{{- if .Values.management.enabled -}}
+{{- if and .Values.server.enabled .Values.management.enabled -}}
 {{- fail "Cannot enable both server (unified mode) and management (microservice mode). Choose one deployment mode." -}}
-{{- end -}}
 {{- end -}}
