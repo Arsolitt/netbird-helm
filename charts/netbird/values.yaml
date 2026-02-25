@@ -13,6 +13,260 @@ nameOverride: ""
 ##
 fullnameOverride: ""
 
+## @section NetBird Management (Microservice)
+
+management:
+  ## @param management.enabled Enable or disable NetBird management component.
+  ##
+  enabled: false
+
+  ## @param management.configmap JSON configuration with {{ .VAR }} placeholders.
+  ##
+  configmap: |-
+    {}
+
+  ## @param management.replicaCount Number of management pod replicas.
+  ##
+  replicaCount: 1
+
+  ## @param management.strategy Deployment strategy for the management component.
+  ##
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+
+  image:
+    ## @param management.image.repository Docker image repository for the management component.
+    ##
+    repository: netbirdio/management
+
+    ## @param management.image.pullPolicy Docker image pull policy.
+    ##
+    pullPolicy: IfNotPresent
+
+    ## @param management.image.tag Docker image tag. Overrides the default tag.
+    ##
+    tag: ""
+
+  ## @param management.imagePullSecrets Docker registry credentials for pulling the management image.
+  ##
+  imagePullSecrets: []
+
+  serviceAccount:
+    ## @param management.serviceAccount.create Whether to create a service account.
+    ##
+    create: true
+
+    ## @param management.serviceAccount.annotations Annotations for the service account.
+    ##
+    annotations: {}
+
+    ## @param management.serviceAccount.name Name of the service account to use.
+    ##
+    name: ""
+
+  ## @param management.deploymentAnnotations Annotations for the management deployment.
+  ##
+  deploymentAnnotations: {}
+
+  ## @param management.podAnnotations Annotations for the management pod(s).
+  ##
+  podAnnotations: {}
+
+  ## @param management.podSecurityContext Security context for the management pod(s).
+  ##
+  podSecurityContext: {}
+
+  ## @param management.securityContext Security context for the management container.
+  ##
+  securityContext: {}
+
+  ## @param management.containerPort Container port for the management HTTP service.
+  ##
+  containerPort: 80
+
+  ## @param management.grpcContainerPort Container port for the management gRPC service.
+  ##
+  grpcContainerPort: 33073
+
+  metrics:
+    ## @param management.metrics.enabled Enable metrics endpoint.
+    ##
+    enabled: false
+
+    ## @param management.metrics.port Metrics port.
+    ##
+    port: 9090
+
+  service:
+    ## @param management.service.type Service type for the management HTTP service.
+    ##
+    type: ClusterIP
+
+    ## @param management.service.port Port for the management HTTP service.
+    ##
+    port: 80
+
+    ## @param management.service.name Name for the management HTTP service.
+    ##
+    name: http
+
+  serviceGrpc:
+    ## @param management.serviceGrpc.type Service type for the management gRPC service.
+    ##
+    type: ClusterIP
+
+    ## @param management.serviceGrpc.port Port for the management gRPC service.
+    ##
+    port: 33073
+
+    ## @param management.serviceGrpc.name Name for the management gRPC service.
+    ##
+    name: grpc
+
+  ## @param management.useBackwardsGrpcService Use backwards-compatible gRPC service.
+  ##
+  useBackwardsGrpcService: false
+
+  ingress:
+    ## @param management.ingress.enabled Enable or disable ingress for HTTP paths.
+    ##
+    enabled: false
+
+    ## @param management.ingress.className Ingress class name.
+    ##
+    className: ""
+
+    ## @param management.ingress.annotations Annotations for the ingress resource.
+    ##
+    annotations: {}
+
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /api
+            pathType: ImplementationSpecific
+
+    ## @param management.ingress.tls TLS settings for the ingress.
+    ##
+    tls: []
+
+  ingressGrpc:
+    ## @param management.ingressGrpc.enabled Enable or disable ingress for gRPC paths.
+    ##
+    enabled: false
+
+    ## @param management.ingressGrpc.className Ingress class name for gRPC.
+    ##
+    className: ""
+
+    ## @param management.ingressGrpc.annotations Annotations for the gRPC ingress resource.
+    ##
+    annotations: {}
+
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /management.ManagementService/
+            pathType: ImplementationSpecific
+
+    ## @param management.ingressGrpc.tls TLS settings for gRPC ingress.
+    ##
+    tls: []
+
+  ## @param management.resources Resource requests and limits for the management pod.
+  ##
+  resources: {}
+
+  ## @param management.nodeSelector Node selector for scheduling the management pod.
+  ##
+  nodeSelector: {}
+
+  ## @param management.tolerations Tolerations for scheduling the management pod.
+  ##
+  tolerations: []
+
+  ## @param management.affinity Affinity rules for scheduling the management pod.
+  ##
+  affinity: {}
+
+  persistentVolume:
+    ## @param management.persistentVolume.enabled Enable or disable persistent volume.
+    ##
+    enabled: true
+
+    ## @param management.persistentVolume.accessModes Access modes for the persistent volume.
+    ##
+    accessModes:
+      - ReadWriteOnce
+
+    ## @param management.persistentVolume.size Size of the persistent volume.
+    ##
+    size: 10Mi
+
+    ## @param management.persistentVolume.storageClass Storage Class of the persistent volume.
+    ##
+    storageClass: null
+
+    ## @param management.persistentVolume.existingPVName Name of an existing persistent volume.
+    ##
+    existingPVName: ""
+
+    ## @param management.persistentVolume.annotations Annotations for the PVC.
+    ##
+    annotations: {}
+
+  ## @param management.livenessProbe Liveness probe for the management component.
+  ##
+  livenessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    tcpSocket:
+      port: http
+
+  ## @param management.readinessProbe Readiness probe for the management component.
+  ##
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    tcpSocket:
+      port: http
+
+  ## @param management.env Environment variables for the management pod.
+  ##
+  env: {}
+
+  ## @param management.envRaw Raw environment variables for the management pod.
+  ##
+  envRaw: []
+
+  ## @param management.envFromSecret Environment variables from secrets.
+  ## Format: ENV_VAR: secretName/secretKey
+  ##
+  envFromSecret: {}
+
+  ## @param management.volumeMounts Volume mounts for the management pod.
+  ##
+  volumeMounts: []
+
+  ## @param management.volumes Volumes for the management pod.
+  ##
+  volumes: []
+
+  ## @param management.gracefulShutdown Add delay before pod shutdown.
+  ##
+  gracefulShutdown: true
+
+  ## @param management.initContainers Init containers for the management pod.
+  ##
+  initContainers: []
+
 ## @section NetBird Server (Unified)
 
 server:
