@@ -1,0 +1,23 @@
+{{- if and .Values.relay.enabled .Values.relay.stun.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "netbird.fullname" . }}-relay-stun
+  namespace: {{ include "netbird.namespace" . }}
+  labels:
+    {{- include "netbird.relay.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.relay.stun.service.type }}
+  {{- if and (eq .Values.relay.stun.service.type "LoadBalancer") .Values.relay.stun.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.relay.stun.service.externalTrafficPolicy }}
+  {{- end }}
+  ports:
+    {{- range $port := .Values.relay.stun.ports }}
+    - port: {{ $port }}
+      targetPort: {{ $port }}
+      protocol: UDP
+      name: stun-{{ $port }}
+    {{- end }}
+  selector:
+    {{- include "netbird.relay.selectorLabels" . | nindent 4 }}
+{{- end -}}

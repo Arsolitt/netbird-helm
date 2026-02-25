@@ -1,0 +1,129 @@
+{{- if .Values.relay.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "netbird.fullname" . }}-relay
+  namespace: {{ include "netbird.namespace" . }}
+  {{- with .Values.relay.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "netbird.relay.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.relay.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "netbird.relay.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.relay.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "netbird.relay.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.relay.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "netbird.relay.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.relay.podSecurityContext | nindent 8 }}
+      {{- with .Values.relay.initContainers }}
+      initContainers:
+        {{- tpl (toYaml .) $ | nindent 6 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-relay
+          securityContext:
+            {{- toYaml .Values.relay.securityContext | nindent 12 }}
+          image: "{{ .Values.relay.image.repository }}:{{ .Values.relay.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.relay.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.relay.containerPort }}
+              protocol: TCP
+            {{- if .Values.relay.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.relay.metrics.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.relay.stun.enabled }}
+            {{- range $port := .Values.relay.stun.ports }}
+            - name: stun-{{ $port }}
+              containerPort: {{ $port }}
+              protocol: UDP
+            {{- end }}
+            {{- end }}
+          {{- if .Values.relay.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.relay.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.relay.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.relay.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.relay.resources | nindent 12 }}
+          {{- if .Values.relay.volumeMounts }}
+          volumeMounts:
+          {{- .Values.relay.volumeMounts | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if or .Values.relay.gracefulShutdown .Values.relay.lifecycle }}
+          lifecycle:
+            {{- if .Values.relay.gracefulShutdown }}
+            preStop:
+              exec:
+                command: ["sh", "-c", "echo Waiting 5 seconds to allow terminating current connections >/proc/1/fd/1; sleep 5"]
+            {{- end }}
+            {{- with .Values.relay.lifecycle }}
+            {{- if .postStart }}
+            postStart:
+              {{- toYaml .postStart | nindent 14 }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          env:
+          {{- if or (.Values.relay.env) (.Values.relay.envRaw) (.Values.relay.envFromSecret) }}
+          {{- range $key, $val := .Values.relay.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+          {{- end }}
+          {{- if .Values.relay.envRaw }}
+            {{- with .Values.relay.envRaw }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- range $key, $val := .Values.relay.envFromSecret }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ (split "/" $val)._0 }}
+                  key: {{ (split "/" $val)._1 }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.relay.stun.enabled }}
+            - name: NB_ENABLE_STUN
+              value: "true"
+            - name: NB_STUN_PORTS
+              value: {{ join "," .Values.relay.stun.ports | quote }}
+          {{- end }}
+      {{- if .Values.relay.volumes }}
+      volumes:
+      {{- .Values.relay.volumes | toYaml | nindent 8 }}
+      {{- end }}
+      {{- with .Values.relay.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.relay.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.relay.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end -}}
