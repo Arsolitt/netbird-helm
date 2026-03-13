@@ -267,6 +267,17 @@ management:
   ##
   initContainers: []
 
+  ## @param management.podCommand Define the arguments for the management pod.
+  ##
+  podCommand:
+    args:
+      - --port=80
+      - --log-file=console
+      - --log-level=info
+      - --disable-anonymous-metrics=false
+      - --single-account-mode-domain=netbird.selfhosted
+      - --dns-domain=netbird.selfhosted
+
 ## @section NetBird Signal (Microservice)
 
 signal:
