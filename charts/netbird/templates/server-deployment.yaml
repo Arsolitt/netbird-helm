@@ -110,7 +110,7 @@ spec:
               containerPort: {{ .Values.server.containerPort }}
               protocol: TCP
             - name: stun
-              containerPort: {{ .Values.server.serviceStun.port }}
+              containerPort: {{ .Values.server.stunContainerPort }}
               protocol: UDP
             {{- if .Values.server.metrics.enabled }}
             - name: metrics

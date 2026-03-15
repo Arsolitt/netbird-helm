@@ -975,6 +975,10 @@ server:
     ##
     externalTrafficPolicy: ""
 
+  ## @param server.stunContainerPort Container port for STUN service.
+  ##
+  stunContainerPort: 53478
+
   ingress:
     ## @param server.ingress.enabled Enable or disable ingress for HTTP paths.
     ##
