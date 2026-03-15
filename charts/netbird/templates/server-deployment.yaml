@@ -46,6 +46,15 @@ spec:
         - name: config-processor
           image: "{{ .Values.server.initContainer.image.repository }}:{{ .Values.server.initContainer.image.tag }}"
           imagePullPolicy: {{ .Values.server.initContainer.image.pullPolicy }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 2222
+            runAsGroup: 2222
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -133,6 +142,8 @@ spec:
               readOnly: true
             - name: server-data
               mountPath: /var/lib/netbird
+            - name: tmp
+              mountPath: /tmp
           {{- if .Values.server.volumeMounts }}
           {{- .Values.server.volumeMounts | toYaml | nindent 12 }}
           {{- end }}
@@ -175,6 +186,9 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        - name: tmp
+          emptyDir:
+            medium: Memory
         {{- if .Values.server.volumes }}
         {{- .Values.server.volumes | toYaml | nindent 8 }}
         {{- end }}
