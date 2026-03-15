@@ -77,11 +77,22 @@ management:
 
   ## @param management.podSecurityContext Security context for the management pod(s).
   ##
-  podSecurityContext: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 2222
+    runAsGroup: 2222
+    fsGroup: 2222
+    seccompProfile:
+      type: RuntimeDefault
 
   ## @param management.securityContext Security context for the management container.
   ##
-  securityContext: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   ## @param management.containerPort Container port for the management HTTP service.
   ##
@@ -333,11 +344,22 @@ signal:
 
   ## @param signal.podSecurityContext Security context for the signal pod(s).
   ##
-  podSecurityContext: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 2222
+    runAsGroup: 2222
+    fsGroup: 2222
+    seccompProfile:
+      type: RuntimeDefault
 
   ## @param signal.securityContext Security context for the signal container.
   ##
-  securityContext: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   ## @param signal.containerPort Container port for the signal service.
   ##
@@ -503,11 +525,22 @@ relay:
 
   ## @param relay.podSecurityContext Security context for the relay pod(s).
   ##
-  podSecurityContext: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 2222
+    runAsGroup: 2222
+    fsGroup: 2222
+    seccompProfile:
+      type: RuntimeDefault
 
   ## @param relay.securityContext Security context for the relay container.
   ##
-  securityContext: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   ## @param relay.containerPort Container port for the relay service.
   ##
@@ -697,11 +730,22 @@ server:
 
   ## @param server.podSecurityContext Security context for the server pod(s).
   ##
-  podSecurityContext: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 2222
+    runAsGroup: 2222
+    fsGroup: 2222
+    seccompProfile:
+      type: RuntimeDefault
 
   ## @param server.securityContext Security context for the server container.
   ##
-  securityContext: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   ## @param server.containerPort Container port for the server service.
   ##
@@ -1105,10 +1149,21 @@ dashboard:
   podAnnotations: {}
 
   ## @param podSecurityContext Pod security context
-  podSecurityContext: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 2222
+    runAsGroup: 2222
+    fsGroup: 2222
+    seccompProfile:
+      type: RuntimeDefault
 
   ## @param dashboard.securityContext Container security context
-  securityContext: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   ## @param dashboard.containerPort Container port
   containerPort: 80
