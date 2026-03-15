@@ -96,7 +96,7 @@ management:
 
   ## @param management.containerPort Container port for the management HTTP service.
   ##
-  containerPort: 80
+  containerPort: 8080
 
   ## @param management.grpcContainerPort Container port for the management gRPC service.
   ##
@@ -282,7 +282,7 @@ management:
   ##
   podCommand:
     args:
-      - --port=80
+      - --port=8080
       - --log-file=console
       - --log-level=info
       - --disable-anonymous-metrics=false
@@ -363,7 +363,7 @@ signal:
 
   ## @param signal.containerPort Container port for the signal service.
   ##
-  containerPort: 80
+  containerPort: 8080
 
   metrics:
     ## @param signal.metrics.enabled Enable metrics endpoint.
@@ -577,7 +577,7 @@ relay:
     ## @param relay.stun.ports STUN server ports (can be multiple).
     ##
     ports:
-      - 3478
+      - 53478
 
     service:
       ## @param relay.stun.service.type Service type for STUN (LoadBalancer or ClusterIP).
@@ -749,13 +749,13 @@ server:
 
   ## @param server.containerPort Container port for the server service.
   ##
-  containerPort: 80
+  containerPort: 8080
 
   ## Server configuration (maps to config.yaml)
   config:
     ## @param server.config.listenAddress Address for the server to listen on.
     ##
-    listenAddress: ":80"
+    listenAddress: ":8080"
 
     ## @param server.config.exposedAddress Public address that peers use to connect.
     ## Format: protocol://hostname:port (e.g., "https://netbird.example.com:443")
@@ -1166,7 +1166,7 @@ dashboard:
         - ALL
 
   ## @param dashboard.containerPort Container port
-  containerPort: 80
+  containerPort: 8080
 
   service:
     ## @param dashboard.service.type Service type
