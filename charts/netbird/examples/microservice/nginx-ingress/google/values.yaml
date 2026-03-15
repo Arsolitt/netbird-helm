@@ -1,0 +1,234 @@
+fullnameOverride: netbird
+
+server:
+  enabled: false
+
+management:
+  enabled: true
+  configmap: |-
+    {
+      "Stuns": [
+        {
+          "Proto": "udp",
+          "URI": "{{ .STUN_SERVER }}",
+          "Username": "",
+          "Password": ""
+        }
+      ],
+      "TURNConfig": {
+        "TimeBasedCredentials": false,
+        "CredentialsTTL": "12h0m0s",
+        "Secret": "secret",
+        "Turns": []
+      },
+      "Relay": {
+        "Addresses": ["rels://netbird.example.com:443/relay"],
+        "CredentialsTTL": "24h",
+        "Secret": "{{ .RELAY_PASSWORD }}"
+      },
+      "Signal": {
+        "Proto": "https",
+        "URI": "netbird.example.com:443",
+        "Username": "",
+        "Password": ""
+      },
+      "Datadir": "/var/lib/netbird/",
+      "DataStoreEncryptionKey": "{{ .DATASTORE_ENCRYPTION_KEY }}",
+      "HttpConfig": {
+        "LetsEncryptDomain": "",
+        "CertFile": "",
+        "CertKey": "",
+        "AuthAudience": "{{ .IDP_CLIENT_ID }}",
+        "AuthIssuer": "https://accounts.google.com",
+        "AuthUserIDClaim": "",
+        "AuthKeysLocation": "https://www.googleapis.com/oauth2/v3/certs",
+        "OIDCConfigEndpoint": "https://accounts.google.com/.well-known/openid-configuration",
+        "IdpSignKeyRefreshEnabled": true
+      },
+      "EmbeddedIdP": {
+        "Enabled": false,
+        "LocalAuthDisabled": true
+      },
+      "IdpManagerConfig": {
+        "ManagerType": "google",
+        "ClientConfig": {
+          "Issuer": "https://accounts.google.com",
+          "TokenEndpoint": "https://oauth2.googleapis.com/token",
+          "ClientID": "",
+          "ClientSecret": "",
+          "GrantType": "client_credentials"
+        },
+        "ExtraConfig": {
+          "CustomerId": "{{ .CUSTOMER_ID }}",
+          "ServiceAccountKey": "{{ .SERVICE_ACCOUNT_KEY }}"
+        },
+        "Auth0ClientCredentials": null,
+        "AzureClientCredentials": null,
+        "KeycloakClientCredentials": null,
+        "ZitadelClientCredentials": null
+      },
+      "DeviceAuthorizationFlow": {
+        "Provider": "hosted",
+        "ProviderConfig": {
+          "ClientID": "",
+          "ClientSecret": "",
+          "Domain": "",
+          "Audience": "{{ .IDP_CLIENT_ID }}",
+          "TokenEndpoint": "https://oauth2.googleapis.com/token",
+          "DeviceAuthEndpoint": "https://oauth2.googleapis.com/device/code",
+          "AuthorizationEndpoint": "",
+          "Scope": "openid",
+          "UseIDToken": true,
+          "RedirectURLs": null
+        }
+      },
+      "PKCEAuthorizationFlow": {
+        "ProviderConfig": {
+          "ClientID": "{{ .IDP_CLIENT_ID }}",
+          "ClientSecret": "{{ .IDP_CLIENT_SECRET }}",
+          "Domain": "",
+          "Audience": "{{ .IDP_CLIENT_ID }}",
+          "TokenEndpoint": "https://oauth2.googleapis.com/token",
+          "DeviceAuthEndpoint": "",
+          "AuthorizationEndpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+          "Scope": "openid profile email",
+          "UseIDToken": true,
+          "RedirectURLs": ["http://localhost:53000"]
+        }
+      },
+      "StoreConfig": {
+        "Engine": "sqlite"
+      },
+      "ReverseProxy": {
+        "TrustedHTTPProxies": null,
+        "TrustedHTTPProxiesCount": 0,
+        "TrustedPeers": null
+      }
+    }
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /api
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: wildcard.example.com-tls
+        hosts:
+          - netbird.example.com
+  ingressGrpc:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: GRPC
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /management.ManagementService
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: wildcard.example.com-tls
+        hosts:
+          - netbird.example.com
+  persistentVolume:
+    enabled: true
+  envFromSecret:
+    STUN_SERVER: netbird/stunServer
+    TURN_SERVER: netbird/turnServer
+    TURN_SERVER_USER: netbird/turnServerUser
+    TURN_SERVER_PASSWORD: netbird/turnServerPassword
+    RELAY_PASSWORD: netbird/relayPassword
+    DATASTORE_ENCRYPTION_KEY: netbird/datastoreEncryptionKey
+    IDP_CLIENT_ID: netbird/idpClientID
+    IDP_CLIENT_SECRET: netbird/idpClientSecret
+    CUSTOMER_ID: netbird/customerID
+    SERVICE_ACCOUNT_KEY: netbird-gcp-service-account/sa.json
+  env:
+    NB_DISABLE_GEOLOCATION: true
+
+signal:
+  enabled: true
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: GRPC
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /signalexchange.SignalExchange
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: wildcard.example.com-tls
+        hosts:
+          - netbird.example.com
+
+relay:
+  enabled: true
+  stun:
+    enabled: true
+    ports:
+      - 53478
+    service:
+      type: LoadBalancer
+      externalTrafficPolicy: Local
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /relay
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: wildcard.example.com-tls
+        hosts:
+          - netbird.example.com
+  env:
+    NB_LOG_LEVEL: info
+    NB_LISTEN_ADDRESS: ":33080"
+    NB_EXPOSED_ADDRESS: rels://netbird.example.com:443/relay
+  envFromSecret:
+    NB_AUTH_SECRET: netbird/relayPassword
+
+dashboard:
+  enabled: true
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+    hosts:
+      - host: netbird.example.com
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: wildcard.example.com-tls
+        hosts:
+          - netbird.example.com
+  env:
+    NETBIRD_MGMT_API_ENDPOINT: https://netbird.example.com:443
+    NETBIRD_MGMT_GRPC_API_ENDPOINT: https://netbird.example.com:443
+    AUTH_CLIENT_SECRET:
+    AUTH_AUTHORITY: https://accounts.google.com
+    USE_AUTH0: false
+    AUTH_SUPPORTED_SCOPES: openid profile email
+    AUTH_REDIRECT_URI:
+    AUTH_SILENT_REDIRECT_URI:
+    NETBIRD_TOKEN_SOURCE: idToken
+    NGINX_SSL_PORT:
+    LETSENCRYPT_DOMAIN:
+    LETSENCRYPT_EMAIL:
+  envFromSecret:
+    AUTH_CLIENT_ID: netbird/idpClientID
+    AUTH_AUDIENCE: netbird/idpClientID
+    AUTH_CLIENT_SECRET: netbird/idpClientSecret
