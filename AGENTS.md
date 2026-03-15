@@ -1,44 +1,36 @@
 # AGENTS.md - Guidelines for AI Coding Agents
 
-This is a Helm chart repository for deploying [NetBird](https://github.com/netbirdio/netbird) VPN components to Kubernetes. Version 2.0+ uses a unified server image (`netbirdio/netbird-server`) combining management, signal, and relay services.
+Helm chart repository for deploying [NetBird](https://github.com/netbirdio/netbird) VPN components to Kubernetes. Version 2.0+ uses a unified server image (`netbirdio/netbird-server`) combining management, signal, and relay services.
 
 ## Build/Lint/Test Commands
 
-### Primary Validation
-
 ```bash
-# Lint chart
+# Lint
 helm lint charts/netbird
 helm lint --quiet charts/netbird  # CI mode
 
 # Full validation (same as CI)
 helm dep up charts/netbird && \
   helm template x charts/netbird --include-crds > helm_output.yaml && \
-  cat helm_output.yaml | kubeconform -summary -strict -ignore-missing-schemas -kubernetes-version=1.30.0 -cache /tmp && \
-  cat helm_output.yaml | kubeconform -summary -strict -ignore-missing-schemas -kubernetes-version=1.31.0 -cache /tmp
-```
+  cat helm_output.yaml | kubeconform -summary -strict -ignore-missing-schemas -kubernetes-version=1.30.0 -cache /tmp
 
-### Template Generation
+# Template debugging
+helm template <release> charts/netbird                    # Basic
+helm template <release> charts/netbird -f values.yaml     # With custom values
+helm template <release> charts/netbird --debug 2>&1       # Debug mode
 
-```bash
-helm template <release-name> charts/netbird                    # Basic
-helm template <release-name> charts/netbird -f values.yaml     # With custom values
-helm template <release-name> charts/netbird -n <namespace>     # With namespace
-```
-
-### Package & Install
-
-```bash
-helm package charts/netbird                           # Package chart
-helm install netbird charts/netbird --dry-run         # Test install
+# Package & install
+helm package charts/netbird
+helm install netbird charts/netbird --dry-run
 ```
 
 ## Code Style Guidelines
 
 ### Helm Template Structure
 
-- **File Naming**: kebab-case with component prefix and resource suffix (e.g., `server-deployment.yaml`, `server-cm.yaml`)
-- **Enable Guards**: All component templates MUST start and end with:
+- **File Naming**: kebab-case with component prefix and resource suffix (e.g., `server-deployment.yaml`)
+- **Template Order**: Files prefixed with `00-` load first (e.g., `00-validations.yaml`)
+- **Enable Guards**: All component templates MUST start and end with enable guards:
   ```yaml
   {{- if .Values.<component>.enabled -}}
   ...
@@ -50,29 +42,29 @@ helm install netbird charts/netbird --dry-run         # Test install
 - **Indentation**: 2 spaces throughout
 - **nindent**: Use for multi-line blocks: `{{- include "netbird.server.labels" . | nindent 4 }}`
 - **Whitespace**: Always use `{{-` and `-}}` to trim whitespace
-- **with blocks**: Use `{{- with .Values.field }}` for optional nested values
-- **range blocks**: Use `{{- range $key, $val := .Values.map }}` for map iteration
+- **with blocks**: `{{- with .Values.field }}` for optional nested values
+- **range blocks**: `{{- range $key, $val := .Values.map }}` for map iteration
 
 ### Helper Functions (_helpers.tpl)
 
+Template naming: `netbird.<component>.<purpose>` (e.g., `netbird.server.labels`)
+
 ```yaml
-{{/*
-Description of template.
-*/}}
 {{- define "netbird.component.labels" -}}
 helm.sh/chart: {{ include "netbird.chart" . }}
 {{ include "netbird.component.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 ```
-
-Template naming: `netbird.<component>.<purpose>` (e.g., `netbird.server.labels`, `netbird.server.selectorLabels`)
 
 ### Resource Naming
 
 - **Resources**: `{{ include "netbird.fullname" . }}-<component>` (e.g., `netbird-server`)
 - **Namespace**: Always use `{{ include "netbird.namespace" . }}` for cross-namespace support
-- **Labels**: Kubernetes recommended labels (`app.kubernetes.io/name`, `app.kubernetes.io/instance`, `app.kubernetes.io/version`, `helm.sh/chart`)
+- **Labels**: Kubernetes recommended labels (`app.kubernetes.io/name`, `app.kubernetes.io/instance`)
 
 ### Values.yaml Structure
 
@@ -85,32 +77,19 @@ component:
   field: "value"
 ```
 
-- Group by component (global, server, dashboard, metrics)
+- Group by component (global, server, dashboard, management, signal, relay, metrics)
 - Use `@section` and `@param` annotations for documentation
-- Provide sensible defaults
 
 ### YAML Style
 
 - Lists: `- item` with space after dash
 - Empty values: `{}` for maps, `[]` for lists, `""` for strings
-- Multi-line: Use `|` for block scalars
 - Quote all string values in templates: `{{ .Values.field | quote }}`
-
-### Conditional Blocks
-
-```yaml
-{{- if .Values.component.field }}
-field:
-  {{- toYaml .Values.component.field | nindent 2 }}
-{{- end }}
-```
 
 ### Environment Variables
 
-Three patterns for deployments:
-
 ```yaml
-# 1. Simple key-value (rendered as list of env vars)
+# 1. Simple key-value
 env:
   KEY: "value"
 
@@ -127,40 +106,15 @@ envFromSecret:
   ENV_VAR: secretName/secretKey
 ```
 
-Template pattern for env vars:
-```yaml
-{{- if or (.Values.component.env) (.Values.component.envRaw) (.Values.component.envFromSecret) }}
-env:
-{{- range $key, $val := .Values.component.env }}
-  - name: {{ $key }}
-    value: {{ $val | quote }}
-{{- end }}
-{{- if .Values.component.envRaw }}
-  {{- with .Values.component.envRaw }}
-    {{- toYaml . | nindent 10 }}
-  {{- end }}
-{{- end }}
-{{- range $key, $val := .Values.component.envFromSecret }}
-  - name: {{ $key }}
-    valueFrom:
-      secretKeyRef:
-        name: {{ (split "/" $val)._0 }}
-        key: {{ (split "/" $val)._1 }}
-{{- end }}
-{{- end }}
-```
-
 ### ConfigMap Pattern (envsubst)
 
-The server uses an init container with envsubst for secrets:
+Server uses init container with envsubst for secrets:
 
 ```yaml
-# ConfigMap stores template with ${VAR} placeholders
 data:
   config.yaml.tmpl: |
     authSecret: {{ .Values.server.config.authSecret | quote }}
 
-# Init container substitutes variables
 initContainers:
   - name: config-processor
     command: ["/bin/sh", "-c"]
@@ -175,8 +129,6 @@ image: "{{ .Values.component.image.repository }}:{{ .Values.component.image.tag 
 ```
 
 ### Pod Annotations (Config Checksum)
-
-Include checksum for automatic rollout on config changes:
 
 ```yaml
 annotations:
@@ -199,16 +151,23 @@ volumes:
     {{- else }}
     emptyDir: {}
     {{- end }}
-  {{- if .Values.component.volumes }}
-  {{- .Values.component.volumes | toYaml | nindent 8 }}
-  {{- end }}
+```
+
+### Validation Pattern
+
+Use `00-validations.yaml` for fail-fast checks:
+
+```yaml
+{{- if and .Values.server.enabled .Values.management.enabled -}}
+{{- fail "Cannot enable both server (unified mode) and management (microservice mode)." -}}
+{{- end -}}
 ```
 
 ## Chart Versioning
 
 - Update `version` in `Chart.yaml` for each chart change
 - Update `appVersion` when NetBird application version changes
-- Releases are automated via GitHub Actions
+- Releases are automated via GitHub Actions on merge to main
 
 ## File Structure
 
@@ -217,16 +176,19 @@ netbird-helm/
 ├── charts/netbird/
 │   ├── Chart.yaml              # Chart metadata
 │   ├── values.yaml             # Default values with @param docs
-│   ├── README.md               # Chart documentation
 │   ├── templates/
 │   │   ├── _helpers.tpl        # Reusable template functions
-│   │   ├── server-*.yaml       # Server resources (deployment, cm, svc, ingress)
+│   │   ├── 00-validations.yaml # Fail-fast validation checks
+│   │   ├── server-*.yaml       # Server resources
 │   │   ├── dashboard-*.yaml    # Dashboard resources
+│   │   ├── management-*.yaml   # Management (microservice mode)
+│   │   ├── signal-*.yaml       # Signal (microservice mode)
+│   │   ├── relay-*.yaml        # Relay (microservice mode)
 │   │   └── service-monitor.yaml
-│   └── examples/               # Example values files
+│   └── examples/               # Example values (minimal, hybrid, microservice)
 ├── .github/workflows/
 │   ├── validate.yml            # PR validation (lint + kubeconform)
-│   └── release.yml             # Chart release
+│   └── release.yml             # Chart release on main
 └── AGENTS.md
 ```
 
@@ -237,10 +199,16 @@ netbird-helm/
 1. Create templates: `<component>-deployment.yaml`, `<component>-service.yaml`
 2. Add helpers in `_helpers.tpl` (labels, selectorLabels, serviceAccountName)
 3. Add defaults in `values.yaml` with `@param` annotations
-4. Update `charts/netbird/README.md` (run `helm-docs` if available)
+4. Update `charts/netbird/README.md`
 
 ### Modifying Templates
 
 1. Maintain backward compatibility
 2. Add `@param` docs for new values
-3. Run validation before committing: `helm lint charts/netbird && helm template x charts/netbird --include-crds | kubeconform -summary`
+3. Run validation: `helm lint charts/netbird && helm template x charts/netbird --include-crds | kubeconform -summary`
+
+### Deployment Modes
+
+- **Unified (server.enabled: true)**: Single deployment with management, signal, relay
+- **Microservice (management.enabled/signal.enabled/relay.enabled: true)**: Separate deployments
+- Cannot enable both modes simultaneously (validated in 00-validations.yaml)
