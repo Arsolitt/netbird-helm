@@ -4,11 +4,13 @@ Helm chart for deploying [NetBird](https://github.com/netbirdio/netbird) - a Wir
 
 ## Deployment Modes
 
-### Unified Server Mode (Recommended)
+> **Warning:** Unified server mode is currently **unstable** and may not work correctly. Use **microservice mode** for production deployments.
 
-Uses a single `netbirdio/netbird-server` image containing management, signal, and relay services. Enabled by default.
+### Unified Server Mode (Experimental)
 
-### Microservice Mode
+Uses a single `netbirdio/netbird-server` image containing management, signal, and relay services. Enabled by default but currently unstable.
+
+### Microservice Mode (Recommended)
 
 Separate deployments for each component:
 - **Management** - API and peer management
@@ -329,6 +331,10 @@ server:
       NB_AUTH_SECRET: netbird-secrets/auth-secret
       NB_ENCRYPTION_KEY: netbird-secrets/encryption-key
 ```
+
+## TODO / Roadmap
+
+- [ ] **Implement unified server mode support** - The `netbirdio/netbird-server` unified image requires proper configuration and testing. Currently, use microservice mode with separate `management`, `signal`, and `relay` components.
 
 ## License
 
