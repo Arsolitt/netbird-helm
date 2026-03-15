@@ -67,8 +67,10 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.relay.resources | nindent 12 }}
-          {{- if .Values.relay.volumeMounts }}
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          {{- if .Values.relay.volumeMounts }}
           {{- .Values.relay.volumeMounts | toYaml | nindent 12 }}
           {{- end }}
           {{- if or .Values.relay.gracefulShutdown .Values.relay.lifecycle }}
@@ -110,10 +112,13 @@ spec:
             - name: NB_STUN_PORTS
               value: {{ join "," .Values.relay.stun.ports | quote }}
           {{- end }}
-      {{- if .Values.relay.volumes }}
       volumes:
-      {{- .Values.relay.volumes | toYaml | nindent 8 }}
-      {{- end }}
+        - name: tmp
+          emptyDir:
+            medium: Memory
+        {{- if .Values.relay.volumes }}
+        {{- .Values.relay.volumes | toYaml | nindent 8 }}
+        {{- end }}
       {{- with .Values.relay.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
