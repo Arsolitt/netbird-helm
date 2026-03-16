@@ -5,6 +5,10 @@ kind: Deployment
 metadata:
   name: {{ include "netbird.fullname" . }}-dashboard
   namespace: {{ include "netbird.namespace" . }}
+  {{- with .Values.dashboard.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   labels:
     {{- include "netbird.dashboard.labels" . | nindent 4 }}
 spec:

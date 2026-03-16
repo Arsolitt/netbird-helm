@@ -1149,6 +1149,10 @@ dashboard:
     ## @param serviceAccount.name Name of the service account to use.
     name: ""
 
+  ## @param dashboard.deploymentAnnotations Annotations for the dashboard deployment.
+  ##
+  deploymentAnnotations: {}
+
   ## @param dashboard.podAnnotations Annotations for pods
   podAnnotations: {}
 
