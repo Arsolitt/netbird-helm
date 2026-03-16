@@ -381,7 +381,7 @@ signal:
 
     ## @param signal.service.port Port for the signal service.
     ##
-    port: 80
+    port: 8080
 
     ## @param signal.service.name Name for the signal service.
     ##
@@ -1134,7 +1134,7 @@ dashboard:
     pullPolicy: IfNotPresent
 
     ## @param image.tag image tag (immutable tags are recommended)
-    tag: "v2.32.5"
+    tag: "v2.34.2"
 
   ## @param imagePullSecrets image pull secrets
   imagePullSecrets: []
@@ -1154,23 +1154,23 @@ dashboard:
 
   ## @param podSecurityContext Pod security context
   podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 2222
-    runAsGroup: 2222
-    fsGroup: 2222
+    # runAsNonRoot: true
+    # runAsUser: 2222
+    # runAsGroup: 2222
+    # fsGroup: 2222
     seccompProfile:
       type: RuntimeDefault
 
   ## @param dashboard.securityContext Container security context
   securityContext:
     allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop:
-        - ALL
+    readOnlyRootFilesystem: false
+    # capabilities:
+    #   drop:
+    #     - ALL
 
   ## @param dashboard.containerPort Container port
-  containerPort: 8080
+  containerPort: 80
 
   service:
     ## @param dashboard.service.type Service type

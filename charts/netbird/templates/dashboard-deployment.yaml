@@ -87,14 +87,20 @@ spec:
             {{- toYaml .Values.dashboard.resources | nindent 12 }}
           volumeMounts:
             - name: tmp
+              mountPath: /var/lib/nginx/logs
+              subPath: nginx-logs
+            - name: tmp
+              mountPath: /var/lib/nginx/tmp
+              subPath: nginx-tmp
+            - name: tmp
               mountPath: /tmp
+              subPath: tmp
           {{- if .Values.dashboard.volumeMounts }}
           {{- .Values.dashboard.volumeMounts | toYaml | nindent 12 }}
           {{- end }}
       volumes:
         - name: tmp
-          emptyDir:
-            medium: Memory
+          emptyDir: {}
         {{- if .Values.dashboard.volumes }}
         {{- .Values.dashboard.volumes | toYaml | nindent 8 }}
         {{- end }}

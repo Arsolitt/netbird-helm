@@ -80,8 +80,9 @@ spec:
             {{- end }}
             {{- end }}
           {{- end }}
-          {{- if or (.Values.signal.env) (.Values.signal.envRaw) (.Values.signal.envFromSecret) }}
           env:
+            - name: NB_PORT
+              value: {{ .Values.signal.containerPort | quote }}
           {{- range $key, $val := .Values.signal.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
@@ -97,7 +98,6 @@ spec:
                 secretKeyRef:
                   name: {{ (split "/" $val)._0 }}
                   key: {{ (split "/" $val)._1 }}
-          {{- end }}
           {{- end }}
       volumes:
         - name: tmp
