@@ -170,23 +170,24 @@ Create the name of the signal service account to use
 {{- end }}
 
 {{/*
-Relay selector labels
+Relay selector labels (parameterized for per-instance)
 */}}
 {{- define "netbird.relay.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "netbird.name" . }}-relay
-app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/name: {{ include "netbird.name" .root }}-relay-{{ .instance.name }}
+app.kubernetes.io/instance: {{ .root.Release.Name }}
+app.kubernetes.io/component: relay
 {{- end }}
 
 {{/*
-Relay labels
+Relay labels (parameterized for per-instance)
 */}}
 {{- define "netbird.relay.labels" -}}
-helm.sh/chart: {{ include "netbird.chart" . }}
+helm.sh/chart: {{ include "netbird.chart" .root }}
 {{ include "netbird.relay.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- if .root.Chart.AppVersion }}
+app.kubernetes.io/version: {{ .root.Chart.AppVersion | quote }}
 {{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/managed-by: {{ .root.Release.Service }}
 {{- end }}
 
 {{/*
