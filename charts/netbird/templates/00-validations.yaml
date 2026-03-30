@@ -1,3 +1,13 @@
 {{- if and .Values.server.enabled .Values.management.enabled -}}
 {{- fail "Cannot enable both server (unified mode) and management (microservice mode). Choose one deployment mode." -}}
 {{- end -}}
+{{- if .Values.relay.instances -}}
+{{- if not (kindIs "slice" .Values.relay.instances) -}}
+{{- fail "relay.instances must be a list." -}}
+{{- end -}}
+{{- range $i, $inst := .Values.relay.instances -}}
+{{- if not $inst.name -}}
+{{- fail (printf "relay.instances[%d] must have a 'name' field." $i) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
