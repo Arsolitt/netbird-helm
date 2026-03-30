@@ -473,14 +473,6 @@ signal:
 ## @section NetBird Relay (Microservice)
 
 relay:
-  ## @param relay.enabled Enable or disable NetBird relay component.
-  ##
-  enabled: false
-
-  ## @param relay.logLevel Log level for the relay component.
-  ##
-  logLevel: info
-
   ## @param relay.replicaCount Number of relay pod replicas.
   ##
   replicaCount: 1
@@ -515,14 +507,6 @@ relay:
     ##
     name: ""
 
-  ## @param relay.deploymentAnnotations Annotations for the relay deployment.
-  ##
-  deploymentAnnotations: {}
-
-  ## @param relay.podAnnotations Annotations for the relay pod(s).
-  ##
-  podAnnotations: {}
-
   ## @param relay.podSecurityContext Security context for the relay pod(s).
   ##
   podSecurityContext:
@@ -542,134 +526,67 @@ relay:
       drop:
         - ALL
 
-  ## @param relay.containerPort Container port for the relay service.
-  ##
-  containerPort: 33080
-
-  metrics:
-    ## @param relay.metrics.enabled Enable metrics endpoint.
-    ##
-    enabled: false
-
-    ## @param relay.metrics.port Metrics port.
-    ##
-    port: 9090
-
-  service:
-    ## @param relay.service.type Service type for the relay service.
-    ##
-    type: ClusterIP
-
-    ## @param relay.service.port Port for the relay service.
-    ##
-    port: 33080
-
-    ## @param relay.service.name Name for the relay service.
-    ##
-    name: http
-
-  ## Embedded STUN server configuration
-  stun:
-    ## @param relay.stun.enabled Enable embedded STUN server.
-    ##
-    enabled: false
-
-    ## @param relay.stun.ports STUN server ports (can be multiple).
-    ##
-    ports:
-      - 53478
-
-    service:
-      ## @param relay.stun.service.type Service type for STUN (LoadBalancer or ClusterIP).
-      ##
-      type: LoadBalancer
-
-      ## @param relay.stun.service.externalTrafficPolicy External traffic policy.
-      ##
-      externalTrafficPolicy: Local
-
-  ingress:
-    ## @param relay.ingress.enabled Enable or disable ingress for the relay component.
-    ##
-    enabled: false
-
-    ## @param relay.ingress.className Ingress class name.
-    ##
-    className: ""
-
-    ## @param relay.ingress.annotations Annotations for the relay ingress resource.
-    ##
-    annotations: {}
-
-    hosts:
-      - host: netbird.example.com
-        paths:
-          - path: /relay
-            pathType: ImplementationSpecific
-
-    ## @param relay.ingress.tls TLS settings for the relay ingress.
-    ##
-    tls: []
-
   ## @param relay.resources Resource requests and limits for the relay pod.
   ##
   resources: {}
-
-  ## @param relay.nodeSelector Node selector for scheduling the relay pod.
-  ##
-  nodeSelector: {}
-
-  ## @param relay.tolerations Tolerations for scheduling the relay pod.
-  ##
-  tolerations: []
-
-  ## @param relay.affinity Affinity rules for scheduling the relay pod.
-  ##
-  affinity: {}
-
-  ## @param relay.livenessProbe Liveness probe for the relay component.
-  ##
-  livenessProbe:
-    initialDelaySeconds: 5
-    periodSeconds: 5
-    tcpSocket:
-      port: http
-
-  ## @param relay.readinessProbe Readiness probe for the relay component.
-  ##
-  readinessProbe:
-    initialDelaySeconds: 5
-    periodSeconds: 5
-    tcpSocket:
-      port: http
-
-  ## @param relay.env Environment variables for the relay pod.
-  ##
-  env: {}
-
-  ## @param relay.envRaw Raw environment variables for the relay pod.
-  ##
-  envRaw: []
-
-  ## @param relay.envFromSecret Environment variables from secrets.
-  ##
-  envFromSecret: {}
-
-  ## @param relay.volumeMounts Volume mounts for the relay pod.
-  ##
-  volumeMounts: []
-
-  ## @param relay.volumes Volumes for the relay pod.
-  ##
-  volumes: []
 
   ## @param relay.gracefulShutdown Add delay before pod shutdown.
   ##
   gracefulShutdown: true
 
-  ## @param relay.initContainers Init containers for the relay pod.
+  ## @param relay.lifecycle Lifecycle hooks for the relay pod.
   ##
-  initContainers: []
+  lifecycle: {}
+
+  ## List of relay instances. Each instance gets its own Deployment, Service, STUN Service, and Ingress.
+  ## Remove `relay.enabled` — relay is active when this list is non-empty.
+  ##
+  ## @param relay.instances List of relay instance configurations.
+  ##
+  instances: []
+  #  - name: default
+  #    containerPort: 33080
+  #    metrics:
+  #      enabled: false
+  #      port: 9090
+  #    service:
+  #      type: ClusterIP
+  #      port: 33080
+  #      name: http
+  #    stun:
+  #      enabled: false
+  #      ports:
+  #        - 53478
+  #      service:
+  #        type: LoadBalancer
+  #        externalTrafficPolicy: Local
+  #    ingress:
+  #      enabled: false
+  #      className: ""
+  #      annotations: {}
+  #      hosts: []
+  #      tls: []
+  #    env: {}
+  #    envRaw: []
+  #    envFromSecret: {}
+  #    nodeSelector: {}
+  #    tolerations: []
+  #    affinity: {}
+  #    deploymentAnnotations: {}
+  #    podAnnotations: {}
+  #    livenessProbe:
+  #      initialDelaySeconds: 5
+  #      periodSeconds: 5
+  #      tcpSocket:
+  #        port: http
+  #    readinessProbe:
+  #      initialDelaySeconds: 5
+  #      periodSeconds: 5
+  #      tcpSocket:
+  #        port: http
+  #    volumeMounts: []
+  #    volumes: []
+  #    initContainers: []
 
 ## @section NetBird Server (Unified)
 
