@@ -1,25 +1,27 @@
-{{- if and .Values.relay.enabled .Values.relay.ingress.enabled -}}
+{{- range $instance := .Values.relay.instances -}}
+{{- if $instance.ingress.enabled -}}
+{{- $context := dict "root" $ "instance" $instance -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "netbird.fullname" . }}-relay
-  namespace: {{ include "netbird.namespace" . }}
+  name: {{ include "netbird.fullname" $ }}-relay-{{ $instance.name }}
+  namespace: {{ include "netbird.namespace" $ }}
   labels:
-    {{- include "netbird.relay.labels" . | nindent 4 }}
-  {{- with .Values.relay.ingress.annotations }}
+    {{- include "netbird.relay.labels" $context | nindent 4 }}
+  {{- with $instance.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.relay.ingress.className }}
-  ingressClassName: {{ .Values.relay.ingress.className | quote }}
+  {{- if $instance.ingress.className }}
+  ingressClassName: {{ $instance.ingress.className | quote }}
   {{- end }}
-  {{- if .Values.relay.ingress.tls }}
+  {{- if $instance.ingress.tls }}
   tls:
-    {{- toYaml .Values.relay.ingress.tls | nindent 4 }}
+    {{- toYaml $instance.ingress.tls | nindent 4 }}
   {{- end }}
   rules:
-    {{- range .Values.relay.ingress.hosts }}
+    {{- range $instance.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
@@ -28,9 +30,10 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "netbird.fullname" $ }}-relay
+                name: {{ include "netbird.fullname" $ }}-relay-{{ $instance.name }}
                 port:
-                  number: {{ $.Values.relay.service.port }}
+                  number: {{ $instance.service.port }}
           {{- end }}
     {{- end }}
+{{- end -}}
 {{- end -}}
