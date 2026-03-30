@@ -1,4 +1,7 @@
-{{- range $instance := .Values.relay.instances -}}
+{{- range $i, $instance := .Values.relay.instances -}}
+{{- if $i }}
+---
+{{- end -}}
 {{- $context := dict "root" $ "instance" $instance -}}
 apiVersion: v1
 kind: Service
@@ -8,14 +11,14 @@ metadata:
   labels:
     {{- include "netbird.relay.labels" $context | nindent 4 }}
 spec:
-  type: {{ $instance.service.type }}
+  type: {{ dig "service" "type" "ClusterIP" $instance }}
   ports:
-    - port: {{ $instance.service.port }}
-      targetPort: {{ $instance.service.name | default "http" }}
+    - port: {{ dig "service" "port" 33080 $instance }}
+      targetPort: {{ dig "service" "name" "http" $instance }}
       protocol: TCP
-      name: {{ $instance.service.name | default "http" }}
-    {{- if $instance.metrics.enabled }}
-    - port: {{ $instance.metrics.port }}
+      name: {{ dig "service" "name" "http" $instance }}
+    {{- if dig "metrics" "enabled" false $instance }}
+    - port: {{ dig "metrics" "port" 9090 $instance }}
       targetPort: metrics
       protocol: TCP
       name: metrics

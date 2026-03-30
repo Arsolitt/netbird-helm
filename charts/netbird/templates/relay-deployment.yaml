@@ -1,4 +1,7 @@
-{{- range $instance := .Values.relay.instances -}}
+{{- range $i, $instance := .Values.relay.instances -}}
+{{- if $i }}
+---
+{{- end -}}
 {{- $context := dict "root" $ "instance" $instance -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -12,7 +15,7 @@ metadata:
   labels:
     {{- include "netbird.relay.labels" $context | nindent 4 }}
 spec:
-  replicas: {{ $.Values.relay.replicaCount }}
+  replicas: {{ dig "replicaCount" 1 $instance }}
   selector:
     matchLabels:
       {{- include "netbird.relay.selectorLabels" $context | nindent 6 }}
@@ -44,14 +47,14 @@ spec:
           imagePullPolicy: {{ $.Values.relay.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ $instance.containerPort }}
+              containerPort: {{ dig "containerPort" 33080 $instance }}
               protocol: TCP
-            {{- if $instance.metrics.enabled }}
+            {{- if dig "metrics" "enabled" false $instance }}
             - name: metrics
-              containerPort: {{ $instance.metrics.port }}
+              containerPort: {{ dig "metrics" "port" 9090 $instance }}
               protocol: TCP
             {{- end }}
-            {{- if $instance.stun.enabled }}
+          {{- if dig "stun" "enabled" false $instance }}
             {{- range $port := $instance.stun.ports }}
             - name: stun-{{ $port }}
               containerPort: {{ $port }}
@@ -89,7 +92,7 @@ spec:
             {{- end }}
           {{- end }}
           env:
-          {{- if or ($instance.env) ($instance.envRaw) ($instance.envFromSecret) $instance.stun.enabled }}
+          {{- if or ($instance.env) ($instance.envRaw) ($instance.envFromSecret) (dig "stun" "enabled" false $instance) }}
           {{- range $key, $val := $instance.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
@@ -103,8 +106,8 @@ spec:
             - name: {{ $key }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ (splitList "/" $val)._0 }}
-                  key: {{ (splitList "/" $val)._1 }}
+                  name: {{ index (splitList "/" $val) 0 }}
+                  key: {{ index (splitList "/" $val) 1 }}
           {{- end }}
           {{- if $instance.stun.enabled }}
             - name: NB_ENABLE_STUN
@@ -124,22 +127,10 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if $instance.affinity }}
       affinity:
-        {{- if $instance.affinity }}
         {{- toYaml $instance.affinity | nindent 8 }}
-        {{- else }}
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/component: relay
-                matchExpressions:
-                  - key: app.kubernetes.io/name
-                    operator: NotIn
-                    values:
-                      - {{ include "netbird.name" $ }}-relay-{{ $instance.name }}
-              topologyKey: kubernetes.io/hostname
-        {{- end }}
+      {{- end }}
       {{- with $instance.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}

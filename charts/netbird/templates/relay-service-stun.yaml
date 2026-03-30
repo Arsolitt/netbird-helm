@@ -1,5 +1,10 @@
+{{- $first := true -}}
 {{- range $instance := .Values.relay.instances -}}
-{{- if $instance.stun.enabled -}}
+{{- if dig "stun" "enabled" false $instance -}}
+{{- if not $first }}
+---
+{{- end -}}
+{{- $first = false -}}
 {{- $context := dict "root" $ "instance" $instance -}}
 apiVersion: v1
 kind: Service

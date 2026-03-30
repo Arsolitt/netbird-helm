@@ -40,7 +40,7 @@ spec:
 {{- end -}}
 
 {{- range $instance := .Values.relay.instances -}}
-{{- if and $instance.metrics.enabled $.Values.metrics.serviceMonitor.enabled -}}
+{{- if and (dig "metrics" "enabled" false $instance) $.Values.metrics.serviceMonitor.enabled -}}
 {{- $context := dict "root" $ "instance" $instance -}}
 ---
 apiVersion: monitoring.coreos.com/v1

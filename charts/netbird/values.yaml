@@ -473,10 +473,6 @@ signal:
 ## @section NetBird Relay (Microservice)
 
 relay:
-  ## @param relay.replicaCount Number of relay pod replicas.
-  ##
-  replicaCount: 1
-
   image:
     ## @param relay.image.repository Docker image repository for the relay component.
     ##
@@ -545,6 +541,7 @@ relay:
   ##
   instances: []
   #  - name: default
+  #    replicaCount: 1
   #    containerPort: 33080
   #    metrics:
   #      enabled: false

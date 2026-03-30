@@ -1,5 +1,10 @@
+{{- $first := true -}}
 {{- range $instance := .Values.relay.instances -}}
-{{- if $instance.ingress.enabled -}}
+{{- if dig "ingress" "enabled" false $instance -}}
+{{- if not $first }}
+---
+{{- end -}}
+{{- $first = false -}}
 {{- $context := dict "root" $ "instance" $instance -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -32,7 +37,7 @@ spec:
               service:
                 name: {{ include "netbird.fullname" $ }}-relay-{{ $instance.name }}
                 port:
-                  number: {{ $instance.service.port }}
+                  number: {{ dig "service" "port" 33080 $instance }}
           {{- end }}
     {{- end }}
 {{- end -}}
