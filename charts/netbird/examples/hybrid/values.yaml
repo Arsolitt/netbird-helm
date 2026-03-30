@@ -40,32 +40,33 @@ server:
           - netbird.example.com
 
 relay:
-  enabled: true
-  stun:
-    enabled: true
-    ports:
-      - 3478
-    service:
-      type: LoadBalancer
-      externalTrafficPolicy: Local
-  ingress:
-    enabled: true
-    className: nginx
-    hosts:
-      - host: netbird.example.com
-        paths:
-          - path: /relay
-            pathType: ImplementationSpecific
-    tls:
-      - secretName: wildcard-example-com-tls
+  instances:
+    - name: default
+      stun:
+        enabled: true
+        ports:
+          - 3478
+        service:
+          type: LoadBalancer
+          externalTrafficPolicy: Local
+      ingress:
+        enabled: true
+        className: nginx
         hosts:
-          - netbird.example.com
-  env:
-    NB_LOG_LEVEL: info
-    NB_LISTEN_ADDRESS: ":33080"
-    NB_EXPOSED_ADDRESS: rels://netbird.example.com:443/relay
-  envFromSecret:
-    NB_AUTH_SECRET: netbird/relayPassword
+          - host: netbird.example.com
+            paths:
+              - path: /relay
+                pathType: ImplementationSpecific
+        tls:
+          - secretName: wildcard-example-com-tls
+            hosts:
+              - netbird.example.com
+      env:
+        NB_LOG_LEVEL: info
+        NB_LISTEN_ADDRESS: ":33080"
+        NB_EXPOSED_ADDRESS: rels://netbird.example.com:443/relay
+      envFromSecret:
+        NB_AUTH_SECRET: netbird/relayPassword
 
 dashboard:
   enabled: true
