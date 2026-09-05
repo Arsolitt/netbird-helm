@@ -59,6 +59,9 @@ spec:
             - name: stun-{{ $port }}
               containerPort: {{ $port }}
               protocol: UDP
+              {{- if dig "stun" "hostPort" false $instance }}
+              hostPort: {{ $port }}
+              {{- end }}
             {{- end }}
             {{- end }}
           {{- if $instance.livenessProbe }}

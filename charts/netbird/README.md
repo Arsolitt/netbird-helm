@@ -224,6 +224,7 @@ server:
 | `relay.stun.service.type`                    | Service type (LoadBalancer/ClusterIP) | `LoadBalancer`   |
 | `relay.stun.service.externalTrafficPolicy`   | External traffic policy               | `Local`          |
 | `relay.stun.service.annotations`             | Annotations for the STUN Service      | `{}`             |
+| `relay.instances[].stun.hostPort`         | Expose STUN UDP ports on the host via hostPort (pods spread across nodes; one node per replica) | `false`          |
 
 ### Resource Configuration
 

@@ -553,6 +553,7 @@ relay:
   #      annotations: {}
   #    stun:
   #      enabled: false
+  #      hostPort: false
   #      ports:
   #        - 53478
   #      service:
