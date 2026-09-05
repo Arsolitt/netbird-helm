@@ -213,6 +213,7 @@ server:
 | `relay.image.tag`                | Image tag                                     | `""`                 |
 | `relay.containerPort`            | Container port                                | `33080`              |
 | `relay.logLevel`                 | Log level                                     | `info`               |
+| `relay.service.annotations`      | Annotations for the relay Service             | `{}`                |
 
 ### Relay STUN Configuration
 
@@ -222,6 +223,7 @@ server:
 | `relay.stun.ports`                           | STUN server ports                     | `[53478]`        |
 | `relay.stun.service.type`                    | Service type (LoadBalancer/ClusterIP) | `LoadBalancer`   |
 | `relay.stun.service.externalTrafficPolicy`   | External traffic policy               | `Local`          |
+| `relay.stun.service.annotations`             | Annotations for the STUN Service      | `{}`             |
 
 ### Resource Configuration
 

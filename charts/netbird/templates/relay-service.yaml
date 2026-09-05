@@ -10,6 +10,10 @@ metadata:
   namespace: {{ include "netbird.namespace" $ }}
   labels:
     {{- include "netbird.relay.labels" $context | nindent 4 }}
+  {{- with dig "service" "annotations" dict $instance }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ dig "service" "type" "ClusterIP" $instance }}
   ports:

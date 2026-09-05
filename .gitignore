@@ -2,3 +2,5 @@ tmp
 .tmp
 *.tgz
 .worktrees/
+/banks
+.DS_Store

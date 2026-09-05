@@ -13,6 +13,10 @@ metadata:
   namespace: {{ include "netbird.namespace" $ }}
   labels:
     {{- include "netbird.relay.labels" $context | nindent 4 }}
+  {{- with dig "stun" "service" "annotations" dict $instance }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ $instance.stun.service.type }}
   {{- if and (eq $instance.stun.service.type "LoadBalancer") $instance.stun.service.externalTrafficPolicy }}

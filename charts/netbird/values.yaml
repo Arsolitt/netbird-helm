@@ -550,6 +550,7 @@ relay:
   #      type: ClusterIP
   #      port: 33080
   #      name: http
+  #      annotations: {}
   #    stun:
   #      enabled: false
   #      ports:
@@ -557,6 +558,7 @@ relay:
   #      service:
   #        type: LoadBalancer
   #        externalTrafficPolicy: Local
+  #        annotations: {}
   #    ingress:
   #      enabled: false
   #      className: ""
