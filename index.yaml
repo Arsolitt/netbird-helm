@@ -3,6 +3,17 @@ entries:
   netbird:
   - apiVersion: v2
     appVersion: 0.74.1
+    created: "2026-09-05T21:48:34.024974597Z"
+    description: NetBird VPN management platform
+    digest: 65c569c1f52ecb4a12a7a2326873f86d091f43b4cc6fb3a8bde316376d25a642
+    icon: https://images.crunchbase.com/image/upload/c_pad,h_256,w_256,f_auto,q_auto:eco,dpr_1/kuu5tm1wt09ztp6ctlag
+    name: netbird
+    type: application
+    urls:
+    - https://github.com/Arsolitt/netbird-helm/releases/download/netbird-3.4.0/netbird-3.4.0.tgz
+    version: 3.4.0
+  - apiVersion: v2
+    appVersion: 0.74.1
     created: "2026-09-05T20:41:42.020468175Z"
     description: NetBird VPN management platform
     digest: 2e774b2b5717fb18cd316fb493597d2af0a98fc3da4ae2ee7decc504297f7b14
@@ -78,4 +89,4 @@ entries:
     urls:
     - https://github.com/Arsolitt/netbird-helm/releases/download/netbird-2.3.0/netbird-2.3.0.tgz
     version: 2.3.0
-generated: "2026-09-05T20:41:42.020500986Z"
+generated: "2026-09-05T21:48:34.024994262Z"
