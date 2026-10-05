@@ -124,6 +124,14 @@ management:
     ##
     name: http
 
+    ## @param management.service.externalIPs External IPs for the management HTTP service.
+    ##
+    externalIPs: []
+
+    ## @param management.service.annotations Annotations for the management HTTP service.
+    ##
+    annotations: {}
+
   serviceGrpc:
     ## @param management.serviceGrpc.type Service type for the management gRPC service.
     ##
@@ -136,6 +144,14 @@ management:
     ## @param management.serviceGrpc.name Name for the management gRPC service.
     ##
     name: grpc
+
+    ## @param management.serviceGrpc.externalIPs External IPs for the management gRPC service.
+    ##
+    externalIPs: []
+
+    ## @param management.serviceGrpc.annotations Annotations for the management gRPC service.
+    ##
+    annotations: {}
 
   ## @param management.useBackwardsGrpcService Use backwards-compatible gRPC service.
   ##
@@ -304,6 +320,14 @@ signal:
   ##
   replicaCount: 1
 
+  ## @param signal.strategy Deployment strategy for the signal component.
+  ##
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+
   image:
     ## @param signal.image.repository Docker image repository for the signal component.
     ##
@@ -386,6 +410,14 @@ signal:
     ## @param signal.service.name Name for the signal service.
     ##
     name: grpc
+
+    ## @param signal.service.externalIPs External IPs for the signal service.
+    ##
+    externalIPs: []
+
+    ## @param signal.service.annotations Annotations for the signal service.
+    ##
+    annotations: {}
 
   ingress:
     ## @param signal.ingress.enabled Enable or disable ingress for the signal component.
@@ -535,7 +567,11 @@ relay:
   lifecycle: {}
 
   ## List of relay instances. Each instance gets its own Deployment, Service, STUN Service, and Ingress.
-  ## Remove `relay.enabled` — relay is active when this list is non-empty.
+  ## The relay component is active when this list is non-empty; there is no `relay.enabled` switch.
+  ## When `strategy` is omitted the relay Deployment uses `type: Recreate`.
+  ## Each instance that should actually run needs the env vars the upstream relay requires:
+  ## `NB_LISTEN_ADDRESS` (matching containerPort), `NB_EXPOSED_ADDRESS` and `NB_AUTH_SECRET` -
+  ## without them the relay container exits at startup. See charts/netbird/ci for working examples.
   ##
   ## @param relay.instances List of relay instance configurations.
   ##
@@ -546,10 +582,16 @@ relay:
   #    metrics:
   #      enabled: false
   #      port: 9090
+  #    strategy:
+  #      type: RollingUpdate
+  #      rollingUpdate:
+  #        maxSurge: 25%
+  #        maxUnavailable: 25%
   #    service:
   #      type: ClusterIP
   #      port: 33080
   #      name: http
+  #      externalIPs: []
   #      annotations: {}
   #    stun:
   #      enabled: false
@@ -559,6 +601,7 @@ relay:
   #      service:
   #        type: LoadBalancer
   #        externalTrafficPolicy: Local
+  #        externalIPs: []
   #        annotations: {}
   #    ingress:
   #      enabled: false
@@ -683,6 +726,26 @@ server:
     ##
     stunPorts: []
 
+    ## @param server.config.stuns External STUN servers as a list of {uri} entries. When set, the local STUN server is disabled.
+    ##
+    stuns: []
+    #  - uri: "stun:stun.example.com:3478"
+
+    ## @param server.config.relays External relay servers. When addresses is non-empty, the local relay server is disabled.
+    ##
+    relays:
+      addresses: []
+      credentialsTTL: ""
+      secret: ""
+    #  addresses:
+    #    - "rels://relay.example.com:443"
+    #  credentialsTTL: "12h"
+    #  secret: "relay-shared-secret"
+
+    ## @param server.config.signalUri External signal server URI. When set, the local signal server is disabled.
+    ##
+    signalUri: ""
+
     ## @param server.config.metricsPort Metrics endpoint port.
     ##
     metricsPort: 9090
@@ -764,9 +827,29 @@ server:
       ##
       signKeyRefreshEnabled: false
 
+      ## @param server.config.auth.sessionCookieEncryptionKey AES key for encrypting embedded IdP session cookies. Use ${VAR} for envsubst (e.g. ${NB_IDP_SESSION_COOKIE_ENCRYPTION_KEY}). Must be 16/24/32 raw bytes or base64-encoded to one of those lengths.
+      ##
+      sessionCookieEncryptionKey: ""
+
+      ## @param server.config.auth.mfaSessionMaxLifetime Max duration for an MFA session from creation (e.g. "24h"). Empty uses the upstream default.
+      ##
+      mfaSessionMaxLifetime: ""
+
+      ## @param server.config.auth.mfaSessionIdleTimeout MFA session expires after this idle period (e.g. "1h"). Empty uses the upstream default.
+      ##
+      mfaSessionIdleTimeout: ""
+
+      ## @param server.config.auth.mfaSessionRememberMe Pre-check "remember me" on login so the MFA session persists across tabs/restarts.
+      ##
+      mfaSessionRememberMe: false
+
       ## @param server.config.auth.dashboardRedirectURIs OAuth2 redirect URIs for dashboard.
       ##
       dashboardRedirectURIs: []
+
+      ## @param server.config.auth.dashboardPostLogoutRedirectURIs OAuth2 post-logout redirect URIs for the dashboard (RP-initiated logout).
+      ##
+      dashboardPostLogoutRedirectURIs: []
 
       ## @param server.config.auth.cliRedirectURIs OAuth2 redirect URIs for CLI.
       ##
@@ -792,11 +875,51 @@ server:
       ##
       encryptionKey: "${NB_ENCRYPTION_KEY}"
 
+      ## @param server.config.store.file Custom SQLite file path (optional, defaults to {dataDir}/store.db).
+      ##
+      file: ""
+
+    ## Activity events store configuration (optional, defaults to sqlite in dataDir).
+    activityStore:
+      ## @param server.config.activityStore.engine Activity store engine: sqlite or postgres.
+      ##
+      engine: ""
+
+      ## @param server.config.activityStore.dsn Connection string for postgres. Use ${VAR} for envsubst.
+      ##
+      dsn: ""
+
+      ## @param server.config.activityStore.file Custom SQLite file path (optional, defaults to {dataDir}/events.db).
+      ##
+      file: ""
+
+    ## Auth (embedded IdP) store configuration (optional, defaults to sqlite3 in dataDir/idp.db).
+    authStore:
+      ## @param server.config.authStore.engine Auth store engine: sqlite3 or postgres.
+      ##
+      engine: ""
+
+      ## @param server.config.authStore.dsn Connection string for postgres. Use ${VAR} for envsubst.
+      ##
+      dsn: ""
+
+      ## @param server.config.authStore.file Custom SQLite file path (optional, defaults to {dataDir}/idp.db).
+      ##
+      file: ""
+
     ## Reverse proxy settings
     reverseProxy: {}
     #  trustedHTTPProxies: []
     #  trustedHTTPProxiesCount: 0
     #  trustedPeers: []
+    #  accessLogRetentionDays: 7
+    #  accessLogCleanupIntervalHours: 24
+
+    ## Agent network (LLM gateway) settings (optional).
+    agentNetwork:
+      ## @param server.config.agentNetwork.pricingDefaultsFile Path to the YAML file with the default LLM pricing table. Relative paths resolve against dataDir.
+      ##
+      pricingDefaultsFile: ""
 
   ## Init container for envsubst processing
   initContainer:
@@ -875,6 +998,14 @@ server:
     ##
     externalTrafficPolicy: ""
 
+    ## @param server.service.externalIPs External IPs for the server service.
+    ##
+    externalIPs: []
+
+    ## @param server.service.annotations Annotations for the server service.
+    ##
+    annotations: {}
+
   serviceStun:
     ## @param server.serviceStun.enabled Enable STUN service.
     ##
@@ -891,6 +1022,14 @@ server:
     ## @param server.serviceStun.externalTrafficPolicy External traffic policy for LoadBalancer type.
     ##
     externalTrafficPolicy: ""
+
+    ## @param server.serviceStun.externalIPs External IPs for the STUN service.
+    ##
+    externalIPs: []
+
+    ## @param server.serviceStun.annotations Annotations for the STUN service.
+    ##
+    annotations: {}
 
   ## @param server.stunContainerPort Container port for STUN service.
   ##
@@ -1001,9 +1140,8 @@ server:
     initialDelaySeconds: 15
     periodSeconds: 10
     timeoutSeconds: 3
-    httpGet:
-      path: /health
-      port: 9000
+    tcpSocket:
+      port: http
 
   ## @param server.readinessProbe Readiness probe for the server component.
   ##
@@ -1012,9 +1150,8 @@ server:
     initialDelaySeconds: 15
     periodSeconds: 10
     timeoutSeconds: 3
-    httpGet:
-      path: /health
-      port: 9000
+    tcpSocket:
+      port: http
 
   ## @param server.volumeMounts Volume mounts for the server pod.
   ##
@@ -1040,20 +1177,20 @@ dashboard:
   podCommand:
     args: []
 
-  ## @param replicaCount Number of replicas to deploy
+  ## @param dashboard.replicaCount Number of replicas to deploy
   replicaCount: 1
 
   image:
-    ## @param image.repository image repository
+    ## @param dashboard.image.repository image repository
     repository: netbirdio/dashboard
 
-    ## @param image.pullPolicy image pull policy
+    ## @param dashboard.image.pullPolicy image pull policy
     pullPolicy: IfNotPresent
 
-    ## @param image.tag image tag (immutable tags are recommended)
-    tag: "v2.90.3"
+    ## @param dashboard.image.tag image tag (immutable tags are recommended)
+    tag: "v2.94.0"
 
-  ## @param imagePullSecrets image pull secrets
+  ## @param dashboard.imagePullSecrets image pull secrets
   imagePullSecrets: []
 
   serviceAccount:
@@ -1063,7 +1200,7 @@ dashboard:
     ## @param dashboard.serviceAccount.annotations Annotations to add to the service account
     annotations: {}
 
-    ## @param serviceAccount.name Name of the service account to use.
+    ## @param dashboard.serviceAccount.name Name of the service account to use.
     name: ""
 
   ## @param dashboard.deploymentAnnotations Annotations for the dashboard deployment.
@@ -1073,7 +1210,7 @@ dashboard:
   ## @param dashboard.podAnnotations Annotations for pods
   podAnnotations: {}
 
-  ## @param podSecurityContext Pod security context
+  ## @param dashboard.podSecurityContext Pod security context
   podSecurityContext:
     # runAsNonRoot: true
     # runAsUser: 2222
@@ -1102,6 +1239,14 @@ dashboard:
 
     ## @param dashboard.service.name Service name
     name: http
+
+    ## @param dashboard.service.externalIPs External IPs for the dashboard service.
+    ##
+    externalIPs: []
+
+    ## @param dashboard.service.annotations Annotations for the dashboard service.
+    ##
+    annotations: {}
 
   ingress:
     ## @param dashboard.ingress.enabled Enable ingress

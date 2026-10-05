@@ -1,11 +1,13 @@
 {{- $first := true -}}
 {{- range $instance := .Values.relay.instances -}}
-{{- if dig "stun" "enabled" false $instance -}}
+{{- $stun := $instance.stun | default dict -}}
+{{- if $stun.enabled -}}
 {{- if not $first }}
 ---
-{{- end -}}
+{{ end -}}
 {{- $first = false -}}
 {{- $context := dict "root" $ "instance" $instance -}}
+{{- $stunService := $stun.service | default dict -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -13,17 +15,17 @@ metadata:
   namespace: {{ include "netbird.namespace" $ }}
   labels:
     {{- include "netbird.relay.labels" $context | nindent 4 }}
-  {{- with dig "stun" "service" "annotations" dict $instance }}
+  {{- with $stunService.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ $instance.stun.service.type }}
-  {{- if and (eq $instance.stun.service.type "LoadBalancer") $instance.stun.service.externalTrafficPolicy }}
-  externalTrafficPolicy: {{ $instance.stun.service.externalTrafficPolicy }}
+  type: {{ $stunService.type | default "ClusterIP" }}
+  {{- if and (eq ($stunService.type | default "ClusterIP") "LoadBalancer") $stunService.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ $stunService.externalTrafficPolicy }}
   {{- end }}
   ports:
-    {{- range $port := $instance.stun.ports }}
+    {{- range $port := $stun.ports }}
     - port: {{ $port }}
       targetPort: {{ $port }}
       protocol: UDP
@@ -31,5 +33,9 @@ spec:
     {{- end }}
   selector:
     {{- include "netbird.relay.selectorLabels" $context | nindent 4 }}
+  {{- with $stunService.externalIPs }}
+  externalIPs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end -}}
 {{- end -}}

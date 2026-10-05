@@ -51,10 +51,13 @@ spec:
             {{- toYaml .Values.management.securityContext | nindent 12 }}
           image: "{{ .Values.management.image.repository }}:{{ .Values.management.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.management.image.pullPolicy }}
-          {{- if .Values.management.podCommand.args }}
+          {{- if or .Values.management.podCommand.args .Values.management.metrics.enabled }}
           args:
             {{- range .Values.management.podCommand.args }}
             - {{ . }}
+            {{- end }}
+            {{- if .Values.management.metrics.enabled }}
+            - --metrics-port={{ .Values.management.metrics.port }}
             {{- end }}
           {{- end }}
           ports:

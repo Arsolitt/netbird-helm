@@ -15,6 +15,24 @@ data:
       stunPorts:
         {{- toYaml .Values.server.config.stunPorts | nindent 8 }}
       {{- end }}
+      {{- with .Values.server.config.stuns }}
+      stuns:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.config.relays.addresses }}
+      relays:
+        addresses:
+          {{- toYaml . | nindent 10 }}
+        {{- with $.Values.server.config.relays.credentialsTTL }}
+        credentialsTTL: {{ . | quote }}
+        {{- end }}
+        {{- with $.Values.server.config.relays.secret }}
+        secret: {{ . | quote }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.server.config.signalUri }}
+      signalUri: {{ . | quote }}
+      {{- end }}
       metricsPort: {{ .Values.server.config.metricsPort }}
       healthcheckAddress: {{ .Values.server.config.healthcheckAddress | quote }}
       logLevel: {{ .Values.server.config.logLevel | quote }}
@@ -39,9 +57,23 @@ data:
         issuer: {{ .Values.server.config.auth.issuer | quote }}
         localAuthDisabled: {{ .Values.server.config.auth.localAuthDisabled }}
         signKeyRefreshEnabled: {{ .Values.server.config.auth.signKeyRefreshEnabled }}
+        sessionCookieEncryptionKey: {{ .Values.server.config.auth.sessionCookieEncryptionKey | quote }}
+        {{- with .Values.server.config.auth.mfaSessionMaxLifetime }}
+        mfaSessionMaxLifetime: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.server.config.auth.mfaSessionIdleTimeout }}
+        mfaSessionIdleTimeout: {{ . | quote }}
+        {{- end }}
+        {{- if .Values.server.config.auth.mfaSessionRememberMe }}
+        mfaSessionRememberMe: true
+        {{- end }}
         {{- if .Values.server.config.auth.dashboardRedirectURIs }}
         dashboardRedirectURIs:
           {{- toYaml .Values.server.config.auth.dashboardRedirectURIs | nindent 8 }}
+        {{- end }}
+        {{- if .Values.server.config.auth.dashboardPostLogoutRedirectURIs }}
+        dashboardPostLogoutRedirectURIs:
+          {{- toYaml .Values.server.config.auth.dashboardPostLogoutRedirectURIs | nindent 8 }}
         {{- end }}
         cliRedirectURIs:
           {{- toYaml .Values.server.config.auth.cliRedirectURIs | nindent 8 }}
@@ -54,12 +86,51 @@ data:
         engine: {{ .Values.server.config.store.engine | quote }}
         dsn: {{ .Values.server.config.store.dsn | quote }}
         encryptionKey: {{ .Values.server.config.store.encryptionKey | quote }}
+        {{- with .Values.server.config.store.file }}
+        file: {{ . | quote }}
+        {{- end }}
+      {{- if .Values.server.config.activityStore.engine }}
+      activityStore:
+        engine: {{ .Values.server.config.activityStore.engine | quote }}
+        {{- with .Values.server.config.activityStore.dsn }}
+        dsn: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.server.config.activityStore.file }}
+        file: {{ . | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.server.config.authStore.engine }}
+      authStore:
+        engine: {{ .Values.server.config.authStore.engine | quote }}
+        {{- with .Values.server.config.authStore.dsn }}
+        dsn: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.server.config.authStore.file }}
+        file: {{ . | quote }}
+        {{- end }}
+      {{- end }}
       {{- if .Values.server.config.reverseProxy }}
       reverseProxy:
+        {{- with .Values.server.config.reverseProxy.trustedHTTPProxies }}
         trustedHTTPProxies:
-          {{- toYaml .Values.server.config.reverseProxy.trustedHTTPProxies | nindent 8 }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.server.config.reverseProxy.trustedHTTPProxiesCount }}
         trustedHTTPProxiesCount: {{ .Values.server.config.reverseProxy.trustedHTTPProxiesCount }}
+        {{- end }}
+        {{- with .Values.server.config.reverseProxy.trustedPeers }}
         trustedPeers:
-          {{- toYaml .Values.server.config.reverseProxy.trustedPeers | nindent 8 }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.server.config.reverseProxy.accessLogRetentionDays }}
+        accessLogRetentionDays: {{ .Values.server.config.reverseProxy.accessLogRetentionDays }}
+        {{- end }}
+        {{- if .Values.server.config.reverseProxy.accessLogCleanupIntervalHours }}
+        accessLogCleanupIntervalHours: {{ .Values.server.config.reverseProxy.accessLogCleanupIntervalHours }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.server.config.agentNetwork.pricingDefaultsFile }}
+      agentNetwork:
+        pricingDefaultsFile: {{ . | quote }}
       {{- end }}
 {{- end -}}

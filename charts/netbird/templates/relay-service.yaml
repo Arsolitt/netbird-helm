@@ -1,8 +1,10 @@
 {{- range $i, $instance := .Values.relay.instances -}}
 {{- if $i }}
 ---
-{{- end -}}
+{{ end -}}
 {{- $context := dict "root" $ "instance" $instance -}}
+{{- $service := $instance.service | default dict -}}
+{{- $metrics := $instance.metrics | default dict -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -10,23 +12,27 @@ metadata:
   namespace: {{ include "netbird.namespace" $ }}
   labels:
     {{- include "netbird.relay.labels" $context | nindent 4 }}
-  {{- with dig "service" "annotations" dict $instance }}
+  {{- with $service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ dig "service" "type" "ClusterIP" $instance }}
+  type: {{ $service.type | default "ClusterIP" }}
   ports:
-    - port: {{ dig "service" "port" 33080 $instance }}
-      targetPort: {{ dig "service" "name" "http" $instance }}
+    - port: {{ $service.port | default 33080 }}
+      targetPort: {{ $service.name | default "http" }}
       protocol: TCP
-      name: {{ dig "service" "name" "http" $instance }}
-    {{- if dig "metrics" "enabled" false $instance }}
-    - port: {{ dig "metrics" "port" 9090 $instance }}
+      name: {{ $service.name | default "http" }}
+    {{- if $metrics.enabled }}
+    - port: {{ $metrics.port | default 9090 }}
       targetPort: metrics
       protocol: TCP
       name: metrics
     {{- end }}
   selector:
     {{- include "netbird.relay.selectorLabels" $context | nindent 4 }}
+  {{- with $service.externalIPs }}
+  externalIPs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end -}}

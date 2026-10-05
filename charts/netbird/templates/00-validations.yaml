@@ -1,13 +1,25 @@
 {{- if and .Values.server.enabled .Values.management.enabled -}}
 {{- fail "Cannot enable both server (unified mode) and management (microservice mode). Choose one deployment mode." -}}
 {{- end -}}
+{{- if and .Values.server.enabled .Values.signal.enabled -}}
+{{- fail "Cannot enable both server (unified mode) and signal (microservice mode). Choose one deployment mode." -}}
+{{- end -}}
 {{- if .Values.relay.instances -}}
 {{- if not (kindIs "slice" .Values.relay.instances) -}}
 {{- fail "relay.instances must be a list." -}}
 {{- end -}}
+{{- $seen := dict -}}
 {{- range $i, $inst := .Values.relay.instances -}}
 {{- if not $inst.name -}}
 {{- fail (printf "relay.instances[%d] must have a 'name' field." $i) -}}
+{{- end -}}
+{{- if hasKey $seen $inst.name -}}
+{{- fail (printf "relay.instances[%d] has duplicate name %q. Relay instance names must be unique." $i $inst.name) -}}
+{{- end -}}
+{{- $_ := set $seen $inst.name true -}}
+{{- $stun := $inst.stun | default dict -}}
+{{- if and $stun.enabled (not ($stun.ports | default list)) -}}
+{{- fail (printf "relay.instances[%d]: stun.ports must not be empty when stun.enabled is true." $i) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

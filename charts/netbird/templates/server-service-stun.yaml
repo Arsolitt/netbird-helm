@@ -6,6 +6,10 @@ metadata:
   namespace: {{ include "netbird.namespace" . }}
   labels:
     {{- include "netbird.server.labels" . | nindent 4 }}
+  {{- with .Values.server.serviceStun.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.server.serviceStun.type }}
   {{- if and (eq .Values.server.serviceStun.type "LoadBalancer") .Values.server.serviceStun.externalTrafficPolicy }}
@@ -18,4 +22,8 @@ spec:
       name: stun
   selector:
     {{- include "netbird.server.selectorLabels" . | nindent 4 }}
+  {{- with .Values.server.serviceStun.externalIPs }}
+  externalIPs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end -}}

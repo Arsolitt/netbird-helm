@@ -1,9 +1,10 @@
 {{- $first := true -}}
 {{- range $instance := .Values.relay.instances -}}
-{{- if dig "ingress" "enabled" false $instance -}}
+{{- $ingress := $instance.ingress | default dict -}}
+{{- if $ingress.enabled -}}
 {{- if not $first }}
 ---
-{{- end -}}
+{{ end -}}
 {{- $first = false -}}
 {{- $context := dict "root" $ "instance" $instance -}}
 apiVersion: networking.k8s.io/v1
@@ -13,20 +14,20 @@ metadata:
   namespace: {{ include "netbird.namespace" $ }}
   labels:
     {{- include "netbird.relay.labels" $context | nindent 4 }}
-  {{- with $instance.ingress.annotations }}
+  {{- with $ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if $instance.ingress.className }}
-  ingressClassName: {{ $instance.ingress.className | quote }}
+  {{- if $ingress.className }}
+  ingressClassName: {{ $ingress.className | quote }}
   {{- end }}
-  {{- if $instance.ingress.tls }}
+  {{- if $ingress.tls }}
   tls:
-    {{- toYaml $instance.ingress.tls | nindent 4 }}
+    {{- toYaml $ingress.tls | nindent 4 }}
   {{- end }}
   rules:
-    {{- range $instance.ingress.hosts }}
+    {{- range $ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
@@ -37,7 +38,7 @@ spec:
               service:
                 name: {{ include "netbird.fullname" $ }}-relay-{{ $instance.name }}
                 port:
-                  number: {{ dig "service" "port" 33080 $instance }}
+                  number: {{ ($instance.service | default dict).port | default 33080 }}
           {{- end }}
     {{- end }}
 {{- end -}}

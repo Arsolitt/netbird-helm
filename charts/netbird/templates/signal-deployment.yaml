@@ -15,6 +15,15 @@ spec:
   selector:
     matchLabels:
       {{- include "netbird.signal.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: {{ .Values.signal.strategy.type }}
+    {{- if eq .Values.signal.strategy.type "RollingUpdate" }}
+    rollingUpdate:
+      {{- if .Values.signal.strategy.rollingUpdate }}
+      maxSurge: {{ .Values.signal.strategy.rollingUpdate.maxSurge | default "25%" }}
+      maxUnavailable: {{ .Values.signal.strategy.rollingUpdate.maxUnavailable | default "25%" }}
+      {{- end }}
+    {{- end }}
   template:
     metadata:
       {{- with .Values.signal.podAnnotations }}
@@ -41,6 +50,12 @@ spec:
             {{- toYaml .Values.signal.securityContext | nindent 12 }}
           image: "{{ .Values.signal.image.repository }}:{{ .Values.signal.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.signal.image.pullPolicy }}
+          {{- if .Values.signal.metrics.enabled }}
+          args:
+            - --log-file
+            - console
+            - --metrics-port={{ .Values.signal.metrics.port }}
+          {{- end }}
           ports:
             - name: grpc
               containerPort: {{ .Values.signal.containerPort }}
