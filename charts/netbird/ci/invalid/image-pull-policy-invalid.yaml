@@ -1,0 +1,5 @@
+# MUST be rejected by the schema: imagePullPolicy is one of Always,
+# IfNotPresent or Never; the value is rendered verbatim into the pod spec.
+dashboard:
+  image:
+    pullPolicy: Sometimes

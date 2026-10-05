@@ -1,0 +1,11 @@
+# MUST fail the render (not the schema): instance names become resource names,
+# so two instances with the same name would render two Deployments fighting
+# over the same set of objects. The validations template refuses it.
+#
+# expect-error: duplicate name
+server:
+  enabled: false
+relay:
+  instances:
+    - name: dup
+    - name: dup

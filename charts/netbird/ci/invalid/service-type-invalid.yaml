@@ -1,0 +1,6 @@
+# MUST be rejected by the schema: `Loadbalancer` is not a Service type (and
+# `ExternalName` is rejected too - the chart cannot render the required
+# spec.externalName). The value is rendered verbatim into spec.type.
+dashboard:
+  service:
+    type: Loadbalancer

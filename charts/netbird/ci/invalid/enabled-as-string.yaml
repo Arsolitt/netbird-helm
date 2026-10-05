@@ -1,0 +1,5 @@
+# MUST be rejected by the schema: `enabled` is a boolean gate. A quoted "true"
+# happens to be truthy in the template today, but a "false" string would be
+# truthy as well and silently enable a component the operator disabled.
+server:
+  enabled: "true"

@@ -1,0 +1,15 @@
+# MUST fail the render (not the schema): stun.enabled with an empty ports list
+# renders `NB_STUN_PORTS: ""` and a STUN Service with no ports, so the relay
+# would advertise STUN on nothing. The validations template refuses it.
+#
+# expect-error: stun.ports must not be empty
+server:
+  enabled: false
+relay:
+  instances:
+    - name: stun-empty
+      stun:
+        enabled: true
+        ports: []
+        service:
+          type: ClusterIP

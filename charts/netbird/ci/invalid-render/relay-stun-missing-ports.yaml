@@ -1,0 +1,15 @@
+# MUST fail the render (not the schema): stun.enabled without a ports list is
+# the same defect as an empty list - the STUN Service and the NB_STUN_PORTS
+# environment variable render with nothing to expose. The validations template
+# refuses it.
+#
+# expect-error: stun.ports must not be empty
+server:
+  enabled: false
+relay:
+  instances:
+    - name: stun-missing
+      stun:
+        enabled: true
+        service:
+          type: ClusterIP

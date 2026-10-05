@@ -1,0 +1,45 @@
+# Scenario: Prometheus Operator scraping.
+#
+# Turns on the server metrics endpoint and the ServiceMonitor in front of it,
+# and gives one relay instance a metrics endpoint so the per-instance
+# ServiceMonitor renders too.
+server:
+  config:
+    exposedAddress: https://ci.example.com:443
+    authSecret: ci-literal-auth-secret
+    auth:
+      issuer: https://ci.example.com/oauth2
+    store:
+      engine: sqlite
+      # base64 of 32 raw bytes; the combined server rejects any other length
+      encryptionKey: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+  metrics:
+    enabled: true
+    port: 9090
+  env:
+    NB_LOG_LEVEL: info
+
+metrics:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+    labels:
+      release: ci-prometheus
+    annotations:
+      ci.example.com/scrape: "true"
+    selector:
+      matchLabels:
+        release: ci-prometheus
+
+relay:
+  instances:
+    - name: monitored
+      metrics:
+        enabled: true
+        port: 9090
+      env:
+        NB_LOG_LEVEL: info
+        NB_LISTEN_ADDRESS: ":33080"
+        NB_EXPOSED_ADDRESS: rels://netbird-ci.example.com:443/relay
+        NB_AUTH_SECRET: ci-literal-relay-secret

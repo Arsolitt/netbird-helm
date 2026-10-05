@@ -1,0 +1,89 @@
+# Scenario: smallest microservice install (management + signal + one relay + dashboard),
+# with metrics enabled on every component and the ServiceMonitor in front of them - the
+# fixture that renders the management/signal ServiceMonitor boundaries.
+#
+# Fully self-contained: every env var the templates reference has a literal
+# value and nothing comes from a Secret, so the runtime gate can start these
+# images from the rendered manifests alone. sqlite/local defaults throughout.
+# The unified server is off because the two modes are mutually exclusive.
+server:
+  enabled: false
+
+management:
+  enabled: true
+  configmap: |-
+    {
+      "Stuns": [
+        {
+          "Proto": "udp",
+          "URI": "stun:netbird-ci.example.com:3478",
+          "Username": "",
+          "Password": ""
+        }
+      ],
+      "TURNConfig": {
+        "TimeBasedCredentials": false,
+        "CredentialsTTL": "12h0m0s",
+        "Secret": "ci-literal-turn-secret",
+        "Turns": []
+      },
+      "Relay": {
+        "Addresses": ["rels://netbird-ci.example.com:443/relay"],
+        "CredentialsTTL": "24h",
+        "Secret": "ci-literal-relay-secret"
+      },
+      "Signal": {
+        "Proto": "https",
+        "URI": "netbird-ci.example.com:443",
+        "Username": "",
+        "Password": ""
+      },
+      "Datadir": "/var/lib/netbird/",
+      "DataStoreEncryptionKey": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+      "HttpConfig": {},
+      "StoreConfig": {
+        "Engine": "sqlite"
+      },
+      "ReverseProxy": {
+        "TrustedHTTPProxies": null,
+        "TrustedHTTPProxiesCount": 0,
+        "TrustedPeers": null
+      }
+    }
+  metrics:
+    enabled: true
+    port: 9090
+  env:
+    NB_DISABLE_GEOLOCATION: true
+
+signal:
+  enabled: true
+  metrics:
+    enabled: true
+    port: 9090
+
+relay:
+  instances:
+    - name: default
+      metrics:
+        enabled: true
+        port: 9090
+      env:
+        NB_LOG_LEVEL: info
+        NB_LISTEN_ADDRESS: ":33080"
+        NB_EXPOSED_ADDRESS: rels://netbird-ci.example.com:443/relay
+        NB_AUTH_SECRET: ci-literal-relay-secret
+      livenessProbe:
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        tcpSocket:
+          port: http
+      readinessProbe:
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        tcpSocket:
+          port: http
+
+metrics:
+  serviceMonitor:
+    enabled: true

@@ -1,0 +1,103 @@
+# Scenario: several relay instances in one release.
+#
+# `primary` is fully configured (RollingUpdate on purpose, to prove an explicit
+# strategy is honoured), `bare` carries the name only and `env-only` adds env
+# without a stun block: both fall back to `type: Recreate` and must render
+# without depending on any other instance key. The unified server and dashboard
+# stay off so the fixture isolates the relay component.
+server:
+  enabled: false
+dashboard:
+  enabled: false
+
+relay:
+  instances:
+    - name: primary
+      replicaCount: 2
+      containerPort: 33080
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 0
+      metrics:
+        enabled: true
+        port: 9090
+      service:
+        type: ClusterIP
+        port: 33080
+        name: http
+        annotations:
+          ci.example.com/component: relay-primary
+        externalIPs:
+          - 203.0.113.11
+      stun:
+        enabled: true
+        hostPort: true
+        ports:
+          - 53478
+        service:
+          type: LoadBalancer
+          externalTrafficPolicy: Local
+          annotations:
+            ci.example.com/component: relay-primary-stun
+          externalIPs:
+            - 203.0.113.11
+      ingress:
+        enabled: true
+        className: nginx
+        annotations:
+          ci.example.com/component: relay-primary
+        hosts:
+          - host: netbird-ci.example.com
+            paths:
+              - path: /relay
+                pathType: ImplementationSpecific
+        tls:
+          - secretName: netbird-ci-example-com-tls
+            hosts:
+              - netbird-ci.example.com
+      env:
+        NB_LOG_LEVEL: info
+        NB_LISTEN_ADDRESS: ":33080"
+        NB_EXPOSED_ADDRESS: rels://netbird-ci.example.com:443/relay
+        NB_AUTH_SECRET: ci-literal-relay-secret
+      envRaw:
+        - name: NB_CUSTOM_FLAG
+          value: "true"
+      nodeSelector:
+        kubernetes.io/hostname: ci-node-1
+      tolerations:
+        - key: InboundProxy
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      deploymentAnnotations:
+        ci.example.com/instance: primary
+      podAnnotations:
+        ci.example.com/pod: primary
+      livenessProbe:
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        tcpSocket:
+          port: http
+      readinessProbe:
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        tcpSocket:
+          port: http
+      volumeMounts:
+        - name: extra
+          mountPath: /etc/netbird-extra
+          readOnly: true
+      volumes:
+        - name: extra
+          emptyDir: {}
+      initContainers:
+        - name: prepare
+          image: busybox:1.36
+          command: ["sh", "-c", "true"]
+    - name: bare
+    - name: env-only
+      env:
+        NB_LOG_LEVEL: warn

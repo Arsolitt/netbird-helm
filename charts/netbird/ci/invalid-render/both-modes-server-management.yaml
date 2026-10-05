@@ -1,0 +1,10 @@
+# MUST fail the render (not the schema): the unified server and the
+# microservice control plane are mutually exclusive - enabling both would start
+# two control planes against the same DataStore. The validations template
+# refuses the combination.
+#
+# expect-error: Cannot enable both server
+server:
+  enabled: true
+management:
+  enabled: true

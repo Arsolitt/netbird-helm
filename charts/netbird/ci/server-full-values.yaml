@@ -1,0 +1,115 @@
+# runtime-skip: external postgres and TLS cert files not present in the image
+# Scenario: full unified-server install.
+#
+# Pins every startup-deciding config key: postgres store with a literal DSN,
+# TLS with a certificate pair, the embedded auth block (owner, redirect URIs,
+# session cookie key, MFA lifetimes), the activity/auth stores, STUN/relay
+# wiring and the reverse-proxy access-log retention. Exercises the keys the
+# schema types as booleans/strings/ints so a quoted boolean cannot slip in.
+server:
+  config:
+    exposedAddress: https://netbird-ci.example.com:443
+    metricsPort: 9090
+    logLevel: debug
+    tls:
+      enabled: true
+      certFile: /etc/netbird/tls/tls.crt
+      keyFile: /etc/netbird/tls/tls.key
+    authSecret: ci-literal-auth-secret
+    dataDir: /var/lib/netbird/
+    auth:
+      issuer: https://netbird-ci.example.com/oauth2
+      localAuthDisabled: false
+      signKeyRefreshEnabled: true
+      sessionCookieEncryptionKey: ci-literal-session-cookie-key
+      mfaSessionMaxLifetime: 24h
+      mfaSessionIdleTimeout: 2h
+      mfaSessionRememberMe: true
+      dashboardRedirectURIs:
+        - https://netbird-ci.example.com/nb-auth
+        - https://netbird-ci.example.com/nb-silent-auth
+      dashboardPostLogoutRedirectURIs:
+        - https://netbird-ci.example.com/
+      cliRedirectURIs:
+        - http://localhost:53000/
+      owner:
+        email: admin@netbird-ci.example.com
+        password: ci-literal-owner-password
+    store:
+      engine: postgres
+      dsn: postgres://netbird:ci-literal-password@postgres.ci.example.com:5432/netbird?sslmode=disable
+      encryptionKey: ci-literal-encryption-key
+    activityStore:
+      engine: postgres
+      dsn: postgres://netbird:ci-literal-password@postgres.ci.example.com:5432/netbird_activity?sslmode=disable
+    authStore:
+      engine: postgres
+      dsn: postgres://netbird:ci-literal-password@postgres.ci.example.com:5432/netbird_auth?sslmode=disable
+    stuns:
+      - uri: stun:netbird-ci.example.com:3478
+    relays:
+      addresses:
+        - rels://netbird-ci.example.com:443/relay
+      credentialsTTL: 24h
+      secret: ci-literal-relay-secret
+    signalUri: https://netbird-ci.example.com:443
+    reverseProxy:
+      trustedHTTPProxies:
+        - 10.0.0.0/8
+      trustedHTTPProxiesCount: 1
+      accessLogRetentionDays: 30
+      accessLogCleanupIntervalHours: 24
+    agentNetwork:
+      pricingDefaultsFile: /etc/netbird/pricing.json
+  metrics:
+    enabled: true
+  service:
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    annotations:
+      ci.example.com/component: server
+    externalIPs:
+      - 203.0.113.10
+  serviceStun:
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    annotations:
+      ci.example.com/component: server-stun
+    externalIPs:
+      - 203.0.113.10
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      ci.example.com/component: server
+    hosts:
+      - host: netbird-ci.example.com
+        paths:
+          - path: /relay
+            pathType: ImplementationSpecific
+          - path: /api
+            pathType: ImplementationSpecific
+          - path: /oauth2
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: netbird-ci-example-com-tls
+        hosts:
+          - netbird-ci.example.com
+  ingressGrpc:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: GRPC
+    hosts:
+      - host: netbird-ci.example.com
+        paths:
+          - path: /signalexchange.SignalExchange
+            pathType: ImplementationSpecific
+          - path: /management.ManagementService
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: netbird-ci-example-com-tls
+        hosts:
+          - netbird-ci.example.com
+  env:
+    NB_LOG_LEVEL: debug

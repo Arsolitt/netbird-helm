@@ -1,0 +1,8 @@
+# MUST be rejected by the schema: an instance name is required and must not be
+# empty - an empty name collapses every resource name to `...-relay-` and the
+# instances become indistinguishable.
+server:
+  enabled: false
+relay:
+  instances:
+    - name: ""

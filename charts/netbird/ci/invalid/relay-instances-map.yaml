@@ -1,0 +1,9 @@
+# MUST be rejected by the schema (not the render): relay.instances is a list.
+# A map of instances would silently produce no relay Deployment at all; the
+# validations template guards this too, but the schema rejects it first.
+server:
+  enabled: false
+relay:
+  instances:
+    primary:
+      name: primary

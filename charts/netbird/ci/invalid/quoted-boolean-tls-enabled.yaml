@@ -1,0 +1,7 @@
+# MUST be rejected by the schema: a quoted boolean is rendered into config.yaml
+# as the string "true", so the server starts without TLS (and a string where a
+# boolean is expected has stopped the app at startup before).
+server:
+  config:
+    tls:
+      enabled: "true"

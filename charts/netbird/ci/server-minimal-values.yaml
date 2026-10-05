@@ -1,0 +1,17 @@
+# Scenario: smallest unified-server install (server only, sqlite).
+#
+# The defaults already select unified mode (server + dashboard). Everything the
+# server refuses to boot without is a literal here - exposedAddress, an auth
+# secret, an issuer and a base64 store encryption key - so the envsubst init
+# container has nothing left to expand and the runtime gate can start the image
+# as rendered.
+server:
+  config:
+    exposedAddress: https://ci.example.com:443
+    authSecret: ci-literal-auth-secret
+    auth:
+      issuer: https://ci.example.com/oauth2
+    store:
+      engine: sqlite
+      # base64 of 32 raw bytes; the combined server rejects any other length
+      encryptionKey: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=

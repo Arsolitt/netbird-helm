@@ -1,0 +1,223 @@
+# Scenario: production-shaped microservice install (mirrors the psclp deployment).
+#
+# Exercises the upstream-parity surface: management HTTP + gRPC ingress, signal
+# ingress, a relay instance with hostPort STUN behind a ClusterIP STUN service,
+# scheduling constraints, service annotations/externalIPs and envFromSecret
+# references. Not self-contained (the Secret references only resolve in a
+# cluster), which is why the runtime gate uses minimal-microservice instead.
+server:
+  enabled: false
+
+management:
+  enabled: true
+  deploymentAnnotations:
+    reloader.stakater.com/auto: "true"
+  configmap: |-
+    {
+      "Stuns": [
+        {
+          "Proto": "udp",
+          "URI": "{{ .STUN_SERVER }}",
+          "Username": "",
+          "Password": ""
+        }
+      ],
+      "TURNConfig": {
+        "TimeBasedCredentials": false,
+        "CredentialsTTL": "12h0m0s",
+        "Secret": "ci-turn-secret",
+        "Turns": []
+      },
+      "Relay": {
+        "Addresses": ["rels://netbird-ci.example.com:443/relay"],
+        "CredentialsTTL": "24h",
+        "Secret": "{{ .RELAY_PASSWORD }}"
+      },
+      "Signal": {
+        "Proto": "https",
+        "URI": "netbird-ci.example.com:443",
+        "Username": "",
+        "Password": ""
+      },
+      "Datadir": "/var/lib/netbird/",
+      "DataStoreEncryptionKey": "{{ .DATASTORE_ENCRYPTION_KEY }}",
+      "StoreConfig": {
+        "Engine": "postgres"
+      },
+      "ReverseProxy": {
+        "TrustedHTTPProxies": null,
+        "TrustedHTTPProxiesCount": 0,
+        "TrustedPeers": null
+      }
+    }
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+    hosts:
+      - host: netbird-ci.example.com
+        paths:
+          - path: /api
+            pathType: ImplementationSpecific
+          - path: /oauth2
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: netbird-ci-example-com-tls
+        hosts:
+          - netbird-ci.example.com
+  ingressGrpc:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: GRPC
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    hosts:
+      - host: netbird-ci.example.com
+        paths:
+          - path: /management.ManagementService
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: netbird-ci-example-com-tls
+        hosts:
+          - netbird-ci.example.com
+  service:
+    annotations:
+      ci.example.com/component: management
+    externalIPs:
+      - 203.0.113.10
+  serviceGrpc:
+    annotations:
+      ci.example.com/component: management-grpc
+    externalIPs:
+      - 203.0.113.10
+  persistentVolume:
+    enabled: false
+  envFromSecret:
+    STUN_SERVER: netbird/stunServer
+    RELAY_PASSWORD: netbird/relayPassword
+    DATASTORE_ENCRYPTION_KEY: netbird/datastoreEncryptionKey
+  env:
+    NB_DISABLE_GEOLOCATION: true
+    NB_ACTIVITY_EVENT_STORE_ENGINE: postgres
+
+signal:
+  enabled: true
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  deploymentAnnotations:
+    reloader.stakater.com/auto: "true"
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: GRPC
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    hosts:
+      - host: netbird-ci.example.com
+        paths:
+          - path: /signalexchange.SignalExchange
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: netbird-ci-example-com-tls
+        hosts:
+          - netbird-ci.example.com
+  service:
+    annotations:
+      ci.example.com/component: signal
+    externalIPs:
+      - 203.0.113.10
+
+relay:
+  instances:
+    # hostPort STUN requires the Recreate strategy: a rolling update would hold
+    # the node port until the new pod is ready.
+    - name: ci-1
+      strategy:
+        type: Recreate
+      deploymentAnnotations:
+        reloader.stakater.com/auto: "true"
+      stun:
+        enabled: true
+        hostPort: true
+        ports:
+          - 53478
+        service:
+          type: ClusterIP
+          annotations:
+            ci.example.com/component: relay-stun
+          externalIPs:
+            - 203.0.113.11
+      service:
+        annotations:
+          ci.example.com/component: relay
+        externalIPs:
+          - 203.0.113.11
+      ingress:
+        enabled: true
+        className: nginx
+        annotations:
+        hosts:
+          - host: netbird-ci.example.com
+            paths:
+              - path: /relay
+                pathType: ImplementationSpecific
+        tls:
+          - secretName: netbird-ci-example-com-tls
+            hosts:
+              - netbird-ci.example.com
+      nodeSelector:
+        kubernetes.io/hostname: ci-node-1
+      tolerations:
+        - key: InboundProxy
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      env:
+        NB_LOG_LEVEL: info
+        NB_LISTEN_ADDRESS: ":33080"
+        NB_EXPOSED_ADDRESS: rels://netbird-ci.example.com:443/relay
+      envFromSecret:
+        NB_AUTH_SECRET: netbird/relayPassword
+
+dashboard:
+  enabled: true
+  deploymentAnnotations:
+    reloader.stakater.com/auto: "true"
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+    hosts:
+      - host: netbird-ci.example.com
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: netbird-ci-example-com-tls
+        hosts:
+          - netbird-ci.example.com
+  service:
+    annotations:
+      ci.example.com/component: dashboard
+    externalIPs:
+      - 203.0.113.10
+  env:
+    NETBIRD_MGMT_API_ENDPOINT: https://netbird-ci.example.com:443
+    NETBIRD_MGMT_GRPC_API_ENDPOINT: https://netbird-ci.example.com:443
+    AUTH_AUTHORITY: https://netbird-ci.example.com/oauth2
+    AUTH_AUDIENCE: netbird-dashboard
+    AUTH_CLIENT_SECRET: ""
+    USE_AUTH0: false
+    AUTH_SUPPORTED_SCOPES: openid profile email groups
+    AUTH_REDIRECT_URI: /nb-auth
+    AUTH_SILENT_REDIRECT_URI: /nb-silent-auth
+    LETSENCRYPT_DOMAIN: "none"
+    LETSENCRYPT_EMAIL: "none"
+  envFromSecret:
+    AUTH_CLIENT_ID: netbird/idpClientID

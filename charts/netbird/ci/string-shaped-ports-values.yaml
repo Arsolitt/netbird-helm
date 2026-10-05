@@ -1,0 +1,95 @@
+# Scenario: ports supplied in their string form.
+#
+# The templates interpolate every port without quoting, so a numeric string
+# renders as a YAML integer (`port: 8080`) and passes API-server validation.
+# This fixture pins that the schema keeps accepting the string shape.
+server:
+  enabled: false
+
+management:
+  enabled: true
+  # Minimal working management.json (same shape as minimal-microservice) so the
+  # runtime gate can start the image; HttpConfig must be non-nil and the store
+  # key must be base64 of 32 raw bytes.
+  configmap: |-
+    {
+      "Stuns": [
+        {
+          "Proto": "udp",
+          "URI": "stun:netbird-ci.example.com:3478",
+          "Username": "",
+          "Password": ""
+        }
+      ],
+      "TURNConfig": {
+        "TimeBasedCredentials": false,
+        "CredentialsTTL": "12h0m0s",
+        "Secret": "ci-literal-turn-secret",
+        "Turns": []
+      },
+      "Relay": {
+        "Addresses": ["rels://netbird-ci.example.com:443/relay"],
+        "CredentialsTTL": "24h",
+        "Secret": "ci-literal-relay-secret"
+      },
+      "Signal": {
+        "Proto": "https",
+        "URI": "netbird-ci.example.com:443",
+        "Username": "",
+        "Password": ""
+      },
+      "Datadir": "/var/lib/netbird/",
+      "DataStoreEncryptionKey": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+      "HttpConfig": {},
+      "StoreConfig": {
+        "Engine": "sqlite"
+      },
+      "ReverseProxy": {
+        "TrustedHTTPProxies": null,
+        "TrustedHTTPProxiesCount": 0,
+        "TrustedPeers": null
+      }
+    }
+  containerPort: "8080"
+  grpcContainerPort: "33073"
+  metrics:
+    enabled: true
+    port: "9090"
+  service:
+    port: "8080"
+  serviceGrpc:
+    port: "33073"
+  env:
+    NB_DISABLE_GEOLOCATION: true
+
+signal:
+  enabled: true
+  containerPort: "8080"
+  metrics:
+    enabled: true
+    port: "9090"
+  service:
+    port: "8080"
+
+relay:
+  instances:
+    - name: string-ports
+      containerPort: "33080"
+      metrics:
+        enabled: true
+        port: "9090"
+      service:
+        port: "33080"
+      stun:
+        enabled: true
+        hostPort: false
+        ports:
+          - "53478"
+        service:
+          type: ClusterIP
+      # literal env so the runtime gate can start the relay on the string port
+      env:
+        NB_LOG_LEVEL: info
+        NB_LISTEN_ADDRESS: ":33080"
+        NB_EXPOSED_ADDRESS: rels://netbird-ci.example.com:443/relay
+        NB_AUTH_SECRET: ci-literal-relay-secret

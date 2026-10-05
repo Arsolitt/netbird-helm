@@ -1,0 +1,9 @@
+# MUST fail the render (not the schema): the unified server embeds the signal
+# service, so a separate signal deployment in the same release would take over
+# the same gRPC endpoints. The validations template refuses the combination.
+#
+# expect-error: Cannot enable both server
+server:
+  enabled: true
+signal:
+  enabled: true

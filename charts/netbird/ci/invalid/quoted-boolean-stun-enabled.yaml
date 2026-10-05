@@ -1,0 +1,14 @@
+# MUST be rejected by the schema: stun.enabled gates the STUN container port
+# and hostPort rendering. A quoted "false" is truthy in the template, so the
+# relay would expose STUN the operator disabled.
+server:
+  enabled: false
+relay:
+  instances:
+    - name: stun-quoted
+      stun:
+        enabled: "false"
+        ports:
+          - 53478
+        service:
+          type: ClusterIP

@@ -1,0 +1,11 @@
+# MUST fail the render (not the schema): every relay resource is named after
+# the instance's `name`; without one the Deployment, Service, STUN Service and
+# Ingress all render as `...-relay-<no value>`. The validations template
+# refuses it.
+#
+# expect-error: must have a 'name' field
+server:
+  enabled: false
+relay:
+  instances:
+    - replicaCount: 1

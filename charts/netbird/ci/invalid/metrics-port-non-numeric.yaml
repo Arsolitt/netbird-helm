@@ -1,0 +1,7 @@
+# MUST be rejected by the schema: the metrics port is interpolated into
+# `containerPort:` and `port:`; a non-numeric string renders `containerPort:
+# http` and the API server refuses the Deployment and the Service.
+management:
+  metrics:
+    enabled: true
+    port: "http"

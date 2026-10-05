@@ -1,0 +1,6 @@
+# MUST be rejected by the schema (not the render): `ingres` is a typo for
+# `ingress`, and Helm silently ignores unknown top-level keys - the value would
+# be dropped and the Ingress never created. This is the main failure mode the
+# schema exists for.
+ingres:
+  enabled: true

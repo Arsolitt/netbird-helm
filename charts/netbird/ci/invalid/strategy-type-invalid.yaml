@@ -1,0 +1,6 @@
+# MUST be rejected by the schema: a Deployment strategy is RollingUpdate or
+# Recreate; `OnDelete` is rendered verbatim into spec.strategy.type and the API
+# server refuses the Deployment.
+management:
+  strategy:
+    type: OnDelete
