@@ -6,11 +6,11 @@ This chart supports both unified server mode and microservice mode for flexible 
 
 > **Note:** This chart is based on [totmicro/helms](https://github.com/totmicro/helms).
 
-> **Warning:** Unified server mode is currently **unstable** and may not work correctly. Use **microservice mode** for production deployments.
+> **Note:** Unified server mode requires a complete `server.config` - the chart defaults are placeholders and the `netbird-server` process exits at startup until `exposedAddress`, `authSecret`, `auth.issuer` and a base64 `store.encryptionKey` are set. `charts/netbird/ci/server-minimal-values.yaml` is a minimal working set, and the runtime CI gate starts the real image on every fixture.
 
 ## Features
 
-- **Unified Server Mode** - Single deployment with management, signal, and relay services (⚠️ unstable)
+- **Unified Server Mode** - Single deployment with management, signal, relay and STUN (requires a complete `server.config`)
 - **Microservice Mode** - Separate deployments for management, signal, and relay (recommended)
 - **Dashboard** - Web UI for managing peers and networks
 - **Multiple IDP Support** - Auth0, Google, Okta, Authentik, and more
@@ -73,7 +73,8 @@ signal:
   enabled: true
 
 relay:
-  enabled: true
+  instances:
+    - name: default
 
 dashboard:
   enabled: true
@@ -90,11 +91,26 @@ See [charts/netbird/examples/](charts/netbird/examples/) for complete deployment
 
 ## Releasing New Chart Versions
 
-New chart versions are automatically published through [GitHub Actions](./.github/workflows/release.yml). To deploy a new version, increment the chart version in `Chart.yaml`.
+Releases are tag-driven: a release exists only because a `v<version>` tag was pushed, and a merge to
+`main` publishes nothing. Write the `## [<version>]` section in [CHANGELOG.md](CHANGELOG.md) first -
+it becomes the GitHub release body - then cut the tag:
 
-## TODO / Roadmap
+```console
+$ hack/release.sh 3.5.0            # stable; a candidate is 3.6.0-rc.1
+```
 
-- [ ] **Implement unified server mode support** - The `netbirdio/netbird-server` unified image requires proper configuration and testing. Currently, use microservice mode with separate `management`, `signal`, and `relay` components.
+`hack/release.sh` refuses anything but `<major>.<minor>.<patch>` or `<major>.<minor>.<patch>-rc.<n>`,
+a missing CHANGELOG section, a dirty tree, a `HEAD` that is not the tip of `origin/main`, and an
+existing tag. Pushing the tag runs the pipeline in
+[.github/workflows/ci.yaml](./.github/workflows/ci.yaml): the `lint`, `schema` and `runtime` gates
+run first, then the chart is packaged with the tag's version, the GitHub release and its `gh-pages`
+index entry are published, and the released version is recorded in `Chart.yaml` on `main`
+afterwards. A candidate is published as a GitHub pre-release, never as "Latest". Releases cut before
+this pipeline used `netbird-*` tags; they keep working through the chart repository index.
+
+Consumers pick the new version up with `helm repo update`. See
+[docs/development.md](docs/development.md) for what each job checks and how to recover a failed
+release.
 
 ## License
 

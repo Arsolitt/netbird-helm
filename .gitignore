@@ -1,6 +1,8 @@
 tmp
 .tmp
 *.tgz
+.cr-release-packages/
+.cr-index/
 .worktrees/
 /banks
 .DS_Store
